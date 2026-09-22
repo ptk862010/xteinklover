@@ -1,0 +1,27 @@
+{
+  "name": "xteinklover",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Send to Xteink: drop a file, get an EPUB in your personal OPDS catalog, pull it on the reader from anywhere",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc -noEmit",
+    "build:web": "node scripts/build-web.mjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260922.1",
+    "@types/node": "^26.6.2",
+    "@xmldom/xmldom": "^0.9.12",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.136.2"
+  },
+  "dependencies": {
+    "jszip": "^3.10.2",
+    "marked": "^18.0.14"
+  }
+}

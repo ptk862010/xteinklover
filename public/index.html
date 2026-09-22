@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Xteink Lover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><span class="logo">📖</span><span>Xteink <b>Lover</b></span></a>
+  <div class="top-actions">
+    <span class="count" id="count"></span>
+    <button class="btn ghost" id="connectBtn" type="button">⚡ Nối máy</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>Ném file vào, <em>kệ sách</em> trên Xteink tự đầy.</h1>
+    <p class="lead">EPUB gửi thẳng. Markdown, TXT, HTML được chuyển thành EPUB ngay trên trình duyệt này — file không rời máy cho tới khi đã thành sách.</p>
+  </section>
+
+  <section class="intake">
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="file" type="button" role="tab">Thả file</button>
+      <button class="tab" data-tab="text" type="button" role="tab">Dán văn bản</button>
+    </div>
+
+    <label id="drop" class="drop panel" data-tab-panel="file">
+      <input type="file" id="file" multiple accept=".epub,.md,.markdown,.txt,.html,.htm">
+      <div class="drop-icon">⤵</div>
+      <div class="drop-title">Kéo thả vào đây, hoặc bấm để chọn</div>
+      <div class="chips"><span>.epub</span><span>.md</span><span>.txt</span><span>.html</span><span class="muted">tối đa 20 MB</span></div>
+    </label>
+
+    <div class="panel text-panel" data-tab-panel="text" hidden>
+      <input id="pasteTitle" class="input" placeholder="Tiêu đề sách">
+      <textarea id="pasteBody" class="input" rows="9" placeholder="Dán Markdown hoặc văn bản thường vào đây…"></textarea>
+      <div class="row-end"><button class="btn primary" id="pasteBtn" type="button">Làm thành EPUB và lên kệ</button></div>
+    </div>
+
+    <ul id="queue" class="queue" aria-live="polite"></ul>
+  </section>
+
+  <section class="shelf">
+    <div class="shelf-head">
+      <h2>Kệ sách</h2>
+      <input id="search" class="input search" type="search" placeholder="Tìm trong kệ…">
+    </div>
+    <div id="books" class="grid"></div>
+    <div id="empty" class="empty" hidden>
+      <div class="empty-art">📚</div>
+      <p>Kệ đang trống. Thả file đầu tiên vào ô phía trên.</p>
+    </div>
+  </section>
+</main>
+
+<div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+<aside class="sheet" id="sheet" hidden aria-label="Nối máy đọc sách">
+  <div class="sheet-head"><h3>Nối Xteink với kệ này</h3><button class="btn ghost" id="sheetClose" type="button">✕</button></div>
+  <ol class="steps">
+    <li>Trên máy: <b>Settings → System → OPDS Servers → Add</b></li>
+    <li>Điền:
+      <div class="kv"><span>URL</span><code id="opdsUrl"></code><button class="btn tiny" data-copy="opdsUrl" type="button">Copy</button></div>
+      <div class="kv"><span>User</span><code id="opdsUser">…</code><button class="btn tiny" data-copy="opdsUser" type="button">Copy</button></div>
+      <div class="kv"><span>Password</span><code>mật khẩu đang đăng nhập trang này</code></div>
+    </li>
+    <li>Mở kệ trên máy → sách mới nằm trên cùng → bấm tải.</li>
+  </ol>
+  <p class="muted small">Máy kéo sách qua HTTPS từ bất kỳ WiFi nào, không cần cùng mạng với điện thoại hay máy tính.</p>
+</aside>
+
+<div id="toasts" class="toasts"></div>
+<script src="/convert.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
