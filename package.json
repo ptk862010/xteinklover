@@ -4,11 +4,12 @@
   "private": true,
   "description": "Send to Xteink: drop a file, get an EPUB in your personal OPDS catalog, pull it on the reader from anywhere",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "npm run build && wrangler dev",
+    "build": "node scripts/build-web.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:hosted": "npm run build && wrangler deploy -c wrangler.hosted.toml",
     "test": "tsx --test tests/*.test.ts",
-    "typecheck": "tsc -noEmit",
-    "build:web": "node scripts/build-web.mjs"
+    "typecheck": "tsc -noEmit"
   },
   "license": "MIT",
   "devDependencies": {
@@ -23,5 +24,21 @@
   "dependencies": {
     "jszip": "^3.10.2",
     "marked": "^18.0.14"
+  },
+  "cloudflare": {
+    "bindings": {
+      "OPDS_USER": {
+        "description": "Tên đăng nhập kệ sách — nhập trên Xteink ở Settings → OPDS Servers. Shelf username."
+      },
+      "OPDS_PASSWORD": {
+        "description": "Mật khẩu kệ sách, đặt dài và khó đoán. Shelf password — use a long random one."
+      },
+      "BOOKS": {
+        "description": "Nơi lưu EPUB (KV). Để Cloudflare tự tạo. Stores your EPUBs."
+      },
+      "CATALOG_TITLE": {
+        "description": "Tên kệ hiện trên máy đọc. Catalog name shown on the reader."
+      }
+    }
   }
 }

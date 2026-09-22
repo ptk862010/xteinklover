@@ -1,34 +1,51 @@
 # Xteink Lover
 
-"Send to Kindle" cho máy đọc sách **Xteink** chạy CrossPoint: ném file vào trang web → thành EPUB → nằm trong **kệ OPDS cá nhân** → trên máy mở kệ là tải, từ bất cứ WiFi nào, không cần cùng mạng, không cần bật File Transfer.
+"Send to Kindle" cho máy đọc sách **Xteink** chạy firmware **CrossPoint**: ném file vào trang web → thành EPUB → nằm trong **kệ OPDS riêng** → trên máy mở kệ là tải. Không cần cùng WiFi, không cần bật File Transfer.
 
-- Cloudflare Worker + KV (free tier, không cần thẻ). Static assets phục vụ trang upload.
-- Chuyển đổi Markdown / TXT / HTML → EPUB **ngay trên trình duyệt** (`web/convert.ts`, dùng lại bộ đóng gói EPUB của plugin Xteink Sync). EPUB gửi thẳng.
-- Toàn bộ (trang, API, feed, file) sau HTTP Basic auth — CrossPoint hỗ trợ Basic.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover)
 
-## Chạy thử local
+- Nhận: EPUB, Markdown, TXT, HTML, hoặc dán văn bản. Chuyển sang EPUB **ngay trên trình duyệt**.
+- Chạy trên Cloudflare Workers + KV, gói free, **không cần gắn thẻ**.
+- Trang web, API, feed và file đều sau đăng nhập (HTTP Basic, CrossPoint hỗ trợ).
 
-```bash
-npm install
-npm run build:web      # public/convert.js
-npm test
-npm run dev            # http://127.0.0.1:8787  (mật khẩu trong .dev.vars)
-```
+## Tự cài một phút
 
-## Deploy (một lần)
+1. Bấm nút **Deploy to Cloudflare** ở trên, đăng nhập (hoặc tạo) tài khoản Cloudflare miễn phí.
+2. Điền **OPDS_USER** (tên đăng nhập) và **OPDS_PASSWORD** (mật khẩu) cho kệ. Cloudflare tự tạo chỗ lưu sách.
+3. Build xong thì mở `https://xteinklover.<subdomain-của-bạn>.workers.dev`, đăng nhập bằng tài khoản vừa đặt.
 
-```bash
-npx wrangler login                                   # mở trình duyệt, đăng nhập Cloudflare
-npx wrangler kv namespace create BOOKS               # dán id vào wrangler.toml
-npx wrangler secret put OPDS_PASSWORD                # mật khẩu kệ
-npm run build:web && npm run deploy                  # → https://app.xteinklover.workers.dev
-```
-
-Đổi `OPDS_USER`, `CATALOG_TITLE` trong `wrangler.toml` nếu muốn.
+Kệ nằm trong tài khoản Cloudflare của bạn, không đi qua ai khác.
 
 ## Nối Xteink
 
-Settings → System → OPDS Servers → thêm: URL `https://<domain>/opds`, username/password như trên. Trên máy: Settings → OPDS → chọn kệ → sách mới nằm trên cùng → bấm tải.
+Trên máy: **Settings → System → OPDS Servers → thêm**
+- URL: `https://<địa chỉ của bạn>/opds`
+- Username / Password: như đã đặt ở bước 2
+
+Đọc: **Settings → OPDS** → chọn kệ → sách mới nằm trên cùng → bấm tải. Trang web có nút **⚡ Nối máy** để copy sẵn các giá trị này.
+
+## Cài bằng dòng lệnh
+
+```bash
+npm install
+npx wrangler login
+npx wrangler secret put OPDS_USER
+npx wrangler secret put OPDS_PASSWORD
+npm run deploy          # lần đầu Cloudflare tự tạo KV
+```
+
+Chạy thử local: chép `.dev.vars.example` thành `.dev.vars`, điền mật khẩu, rồi `npm run dev` → http://127.0.0.1:8787. Test: `npm test`.
+
+## Giới hạn gói free
+
+| | |
+| :--- | :--- |
+| Dung lượng | 1 GB, tối đa 20 MB/file (đổi `MAX_UPLOAD_MB`, trần KV là 25 MB) |
+| Gửi sách | 1.000 lần ghi KV/ngày |
+| Mở kệ trên máy | 1.000 lần list KV/ngày |
+| Request | 100.000/ngày |
+
+Một người dùng thì không chạm tới.
 
 ## API
 
@@ -40,4 +57,10 @@ Settings → System → OPDS Servers → thêm: URL `https://<domain>/opds`, use
 | `POST /api/books` | multipart `file` (EPUB), `title`, `author` |
 | `DELETE /api/books/<id>` | xóa |
 
-Giới hạn KV free: 1 GB, 25 MB/file, 1.000 lần ghi/ngày, 1.000 lần list/ngày (mỗi lần mở kệ trên máy = 1 list).
+## English
+
+Send-to-Kindle for **Xteink** readers running **CrossPoint** firmware. Drop a file (EPUB, Markdown, TXT, HTML) or paste text; it is converted to EPUB in your browser and added to a private OPDS catalog that the reader pulls over any WiFi. Click **Deploy to Cloudflare**, set `OPDS_USER` and `OPDS_PASSWORD`, then add `https://<your-worker>/opds` under Settings → System → OPDS Servers on the device. Runs on the Cloudflare free plan, no card required.
+
+## License
+
+MIT

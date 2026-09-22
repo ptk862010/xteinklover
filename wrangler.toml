@@ -1,20 +1,20 @@
-name = "app"
+# Cấu hình cho người tự cài (nút "Deploy to Cloudflare" hoặc `npm run deploy`).
+# Bản hosted của tác giả dùng wrangler.hosted.toml.
+name = "xteinklover"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
-# Static upload page + bộ chuyển đổi chạy trên trình duyệt. Worker chạy trước để chặn Basic auth.
+# Trang upload + bộ chuyển đổi chạy trên trình duyệt. Worker chạy trước để chặn Basic auth.
 [assets]
 directory = "public"
 binding = "ASSETS"
 run_worker_first = true
 
-# KV free: 1 GB, value tối đa 25 MB, 1.000 ghi/ngày — đủ cho catalog cá nhân, không cần thẻ như R2.
-# Sau khi `wrangler login`: `wrangler kv namespace create BOOKS` rồi dán id vào đây.
+# Không ghi id: Cloudflare tự tạo namespace KV lúc deploy lần đầu.
+# KV free: 1 GB, value tối đa 25 MB, 1.000 ghi/ngày, không cần gắn thẻ như R2.
 [[kv_namespaces]]
 binding = "BOOKS"
-id = "ca8965022142413a8f1184565e6eef09"
 
 [vars]
-OPDS_USER = "kien"
-CATALOG_TITLE = "Xteink Lover — Kệ sách của Kiên"
+CATALOG_TITLE = "Xteink Lover"
 MAX_UPLOAD_MB = "20"

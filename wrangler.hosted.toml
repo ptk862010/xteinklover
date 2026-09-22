@@ -1,0 +1,18 @@
+# Bản hosted của tác giả: https://app.xteinklover.workers.dev
+# Deploy: npm run deploy:hosted. OPDS_USER và OPDS_PASSWORD là secret của worker "app".
+name = "app"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = true
+
+[[kv_namespaces]]
+binding = "BOOKS"
+id = "ca8965022142413a8f1184565e6eef09"
+
+[vars]
+CATALOG_TITLE = "Xteink Lover — Kệ sách của Kiên"
+MAX_UPLOAD_MB = "20"

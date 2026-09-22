@@ -75,7 +75,7 @@ async function handleDownload(id: string, env: Env): Promise<Response> {
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
-    if (!env.OPDS_PASSWORD) return new Response("Chưa đặt OPDS_PASSWORD", { status: 500 });
+    if (!env.OPDS_USER || !env.OPDS_PASSWORD) return new Response("Chưa đặt OPDS_USER / OPDS_PASSWORD (secret của worker)", { status: 500 });
     if (!isAuthorized(req.headers.get("Authorization"), env.OPDS_USER, env.OPDS_PASSWORD)) return unauthorized();
 
     const url = new URL(req.url);
