@@ -69,6 +69,16 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET
 
 Người mới bấm Google thì chọn một tên đăng nhập (tên này điền vào ô User trên máy đọc). Tài khoản có mật khẩu thì vào **Tài khoản → Liên kết Google**. Trang chỉ lưu mã định danh Google, không lưu email: email chỉ dùng một lần để gợi ý tên. Máy đọc sách vẫn dùng khóa OPDS như mọi tài khoản.
 
+### Dán link bài viết
+
+Tab **Dán link**: dán link bài báo, blog → trang tự cắt lấy nội dung chính và ảnh (Readability), làm EPUB, lên kệ. Server chỉ lấy hộ trang (vượt CORS), không phân tích: cắt bài chạy trên trình duyệt. Chặn link tới IP, địa chỉ nội bộ, cổng lạ, kể cả khi trang chuyển hướng; tối đa 40 link và 600 ảnh mỗi người mỗi giờ. Bài cần đăng nhập (báo trả phí) thì server không lấy được: copy nội dung rồi dán vào tab **Dán văn bản** (dán từ trang web giữ tiêu đề, danh sách, link).
+
+Trên Android, cài trang như app (menu Chrome → *Thêm vào màn hình chính*), rồi ở app nào cũng bấm **Chia sẻ → Xteink Lover**. iPhone: Phím tắt mở `https://<địa-chỉ>/?url=<link>`.
+
+### Gửi từ Obsidian
+
+Plugin Obsidian **Xteink Sync** gửi note thẳng lên kệ, từ bất cứ đâu: trên web vào **Tài khoản → Mã cho ứng dụng → Tạo mã**, dán mã vào cài đặt plugin (Gửi tới: Kệ Xteink Lover). Mã chỉ xem, gửi, xóa được sách; tối đa 5 mã, thu hồi riêng từng mã.
+
 ## Phát triển
 
 ```bash
@@ -134,6 +144,10 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 | `GET /api/google/pending` | người mới từ Google: `{suggest, needsCode}` |
 | `POST /api/google/signup` | `{username, code?}` → tạo tài khoản gắn Google |
 | `POST /api/google/cancel` · `POST /api/google/unlink` | bỏ chọn tên · gỡ Google (chỉ khi tài khoản có mật khẩu) |
+| `POST /api/fetch-page` | `{url}` → byte thô của trang (header `X-Final-Url`, `X-Charset`) để trình duyệt cắt bài |
+| `GET /api/fetch-image?url=` | ảnh trong bài (không nhận SVG) |
+| `GET /api/tokens` · `POST /api/tokens` | liệt kê / tạo mã ứng dụng `{name, proof?}` (tài khoản có mật khẩu phải kèm `proof`; chỉ có Google thì phải vừa đăng nhập lại trong 10 phút) |
+| `DELETE /api/tokens/<id>` | thu hồi mã |
 | `GET /api/books` | danh sách sách |
 | `POST /api/books?title=&author=` | body là file EPUB thô |
 | `DELETE /api/books/<id>` | xóa sách |
@@ -141,6 +155,8 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 | `GET /books/<id>.epub` | tải sách (Basic auth hoặc cookie) |
 
 `proof` = hex của PBKDF2-SHA256(mật khẩu, `"xteinklover|v1|" + username`, 600.000 vòng, 32 byte). Mọi request đổi dữ liệu phải có `Origin` cùng trang.
+
+**Mã ứng dụng** (`Authorization: Bearer xlapp_…`) chỉ dùng được cho `GET /api/me`, `GET /api/books`, `POST /api/books`, `DELETE /api/books/<id>`; không cần `Origin`. Việc khác trả 403.
 
 `POST /api/books`: body là file EPUB thô (`Content-Type: application/epub+zip`, bắt buộc `Content-Length`), tiêu đề và tác giả ở query `?title=&author=`.
 

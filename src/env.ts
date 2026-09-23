@@ -24,6 +24,8 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   /** Chỉ dùng cho test tích hợp: token endpoint giả trên máy local. */
   GOOGLE_TOKEN_URL?: string;
+  /** Chỉ dùng cho test tích hợp: cho "Dán link" lấy trang từ 127.0.0.1 / localhost. */
+  FETCH_ALLOW_LOCAL?: string;
 }
 
 export interface Limits {

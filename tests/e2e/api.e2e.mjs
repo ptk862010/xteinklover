@@ -450,6 +450,131 @@ test("Google: tài khoản chỉ có Google — không gỡ được Google, xó
   assert.equal((await googleRound(client(), { sub: "g-1001" })).location, "/?google=pick");
 });
 
+// ── Mã cho ứng dụng (plugin Obsidian gửi thẳng lên kệ) ──
+test("mã ứng dụng: tạo cần mật khẩu; gửi/xem/xóa sách bằng Bearer, không cần Origin", async () => {
+  const c = client();
+  const name = "plugin" + Date.now().toString(36).slice(-4);
+  const ip = { "CF-Connecting-IP": "203.0.113.60" };
+  assert.equal((await c.req("/api/signup", { method: "POST", json: { username: name, proof: await proof(name, "matkhau-dai-1") }, headers: ip })).status, 201);
+  assert.equal((await c.req("/api/tokens", { method: "POST", json: { name: "Obsidian" } })).status, 400, "thiếu mật khẩu");
+  assert.equal((await c.req("/api/tokens", { method: "POST", json: { name: "Obsidian", proof: await proof(name, "sai-roi-nhe") } })).status, 403);
+  const made = await c.req("/api/tokens", { method: "POST", json: { name: "Obsidian máy nhà", proof: await proof(name, "matkhau-dai-1") } });
+  assert.equal(made.status, 201, JSON.stringify(made.data));
+  assert.match(made.data.token, /^xlapp_[0-9a-f]{64}$/);
+  const list = await c.req("/api/tokens");
+  assert.equal(list.data.length, 1);
+  assert.equal(list.data[0].name, "Obsidian máy nhà");
+  assert.equal(list.data[0].token, undefined, "danh sách không lộ mã");
+
+  // Plugin: không cookie, không Origin
+  const H = { Authorization: "Bearer " + made.data.token };
+  const me = await fetch(BASE + "/api/me", { headers: H }).then((r) => r.json());
+  assert.equal(me.user.username, name);
+  const up = await fetch(BASE + "/api/books?title=" + encodeURIComponent("Ghi chú Obsidian"), { method: "POST", headers: { ...H, "Content-Type": "application/epub+zip" }, body: fakeEpub() });
+  assert.equal(up.status, 201);
+  const id = (await up.json()).book.id;
+  const books = await fetch(BASE + "/api/books", { headers: H }).then((r) => r.json());
+  assert.deepEqual(books.map((b) => b.id), [id]);
+  assert.equal((await fetch(BASE + "/api/books/" + id, { method: "DELETE", headers: H })).status, 200);
+  assert.equal((await fetch(BASE + "/api/books", { headers: H }).then((r) => r.json())).length, 0);
+
+  // Mã không làm được việc của tài khoản
+  for (const [path, method] of [["/api/tokens", "GET"], ["/api/tokens", "POST"], ["/api/password", "POST"], ["/api/opds-key", "POST"], ["/api/account", "DELETE"], ["/api/google/start", "POST"]]) {
+    const r = await fetch(BASE + path, { method, headers: { ...H, "Content-Type": "application/json" }, body: method === "GET" ? undefined : "{}" });
+    assert.equal(r.status, 403, `${method} ${path}`);
+  }
+  // Mã sai / sai dạng
+  assert.equal((await fetch(BASE + "/api/me", { headers: { Authorization: "Bearer xlapp_" + "0".repeat(64) } })).status, 401);
+  assert.equal((await fetch(BASE + "/api/me", { headers: { Authorization: "Bearer abc" } })).status, 401);
+
+  // Thu hồi → hết dùng được
+  assert.equal((await c.req("/api/tokens/" + made.data.id, { method: "DELETE" })).status, 200);
+  assert.equal((await fetch(BASE + "/api/me", { headers: H })).status, 401);
+  assert.equal((await c.req("/api/tokens/" + made.data.id, { method: "DELETE" })).status, 404);
+});
+
+test("mã ứng dụng: tối đa 5 mã; đổi mật khẩu thu hồi hết; người khác không thu hồi được; xóa tài khoản thì mã chết", async () => {
+  const c = client();
+  const name = "tokmax" + Date.now().toString(36).slice(-4);
+  const ip = { "CF-Connecting-IP": "203.0.113.61" };
+  assert.equal((await c.req("/api/signup", { method: "POST", json: { username: name, proof: await proof(name, "matkhau-dai-1") }, headers: ip })).status, 201);
+  const pf = await proof(name, "matkhau-dai-1");
+  const ids = [];
+  let last = "";
+  for (let i = 0; i < 5; i++) {
+    const r = await c.req("/api/tokens", { method: "POST", json: { name: "m" + i, proof: pf } });
+    assert.equal(r.status, 201);
+    ids.push(r.data.id);
+    last = r.data.token;
+  }
+  assert.equal((await c.req("/api/tokens", { method: "POST", json: { name: "thu6", proof: pf } })).status, 409);
+  // Đổi mật khẩu → mọi mã bị thu hồi
+  const pf2 = await proof(name, "matkhau-moi-2");
+  assert.equal((await c.req("/api/password", { method: "POST", json: { current: pf, next: pf2 } })).status, 200);
+  assert.equal((await fetch(BASE + "/api/me", { headers: { Authorization: "Bearer " + last } })).status, 401);
+  assert.equal((await c.req("/api/tokens")).data.length, 0);
+  const again = await c.req("/api/tokens", { method: "POST", json: { name: "moi", proof: pf2 } });
+  assert.equal(again.status, 201);
+  last = again.data.token;
+  ids[0] = again.data.id;
+  // B (người khác) không thu hồi được mã của c
+  assert.equal((await B.req("/api/tokens/" + ids[0], { method: "DELETE" })).status, 404);
+  assert.equal((await c.req("/api/tokens")).data.length, 1);
+  assert.equal((await c.req("/api/account", { method: "DELETE", json: { proof: pf2 } })).status, 200);
+  assert.equal((await fetch(BASE + "/api/me", { headers: { Authorization: "Bearer " + last } })).status, 401);
+});
+
+// ── Dán link: server lấy trang hộ (FETCH_ALLOW_LOCAL cho phép 127.0.0.1 trong test) ──
+const SITE = "http://127.0.0.1:8797";
+const PNG_1PX = Buffer.from("89504e470d0a1a0a0000000d4948445200000001000000010806000000" + "1f15c4890000000d49444154789c6360000000000200015e36b8a50000000049454e44ae426082", "hex");
+const fakeSite = http.createServer((req, res) => {
+  const send = (status, type, body, extra = {}) => { res.writeHead(status, { "Content-Type": type, ...extra }); res.end(body); };
+  if (req.url === "/bai-viet") return send(200, "text/html; charset=utf-8", "<html><head><title>Bài thử</title></head><body><article><h1>Bài thử</h1><p>" + "Nội dung dài. ".repeat(60) + "</p><img src=\"/anh.png\"></article></body></html>");
+  if (req.url === "/chuyen") return send(302, "text/plain", "", { Location: "/bai-viet" });
+  if (req.url === "/vao-noi-bo") return send(302, "text/plain", "", { Location: "http://10.0.0.1/admin" });
+  if (req.url === "/can-dang-nhap") return send(403, "text/html", "<p>login</p>");
+  if (req.url === "/file.zip") return send(200, "application/zip", "PK");
+  if (req.url === "/anh.png") return send(200, "image/png", PNG_1PX);
+  if (req.url === "/anh.svg") return send(200, "image/svg+xml", "<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>");
+  if (req.url === "/to-qua") return send(200, "text/html", "x".repeat(5 * 1024 * 1024));
+  send(404, "text/plain", "không có");
+});
+await new Promise((r) => fakeSite.listen(8797, "127.0.0.1", r));
+after(() => fakeSite.close());
+
+test("dán link: lấy trang (theo redirect), trả byte thô + địa chỉ cuối; cần đăng nhập", async () => {
+  assert.equal((await client().req("/api/fetch-page", { method: "POST", json: { url: SITE + "/bai-viet" } })).status, 401);
+  const r = await B.req("/api/fetch-page", { method: "POST", json: { url: SITE + "/chuyen" } });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.headers.get("x-final-url"), SITE + "/bai-viet");
+  assert.equal(r.headers.get("x-charset"), "utf-8");
+  assert.match(String(r.data), /Nội dung dài/);
+});
+
+test("dán link: chặn redirect vào mạng nội bộ, trang cần đăng nhập, file không phải trang, trang quá lớn", async () => {
+  const bad = async (url) => (await B.req("/api/fetch-page", { method: "POST", json: { url } }));
+  assert.equal((await bad("http://10.0.0.1/")).status, 400);
+  const inner = await bad(SITE + "/vao-noi-bo");
+  assert.equal(inner.status, 422);
+  assert.match(inner.data.error, /IP/);
+  const login = await bad(SITE + "/can-dang-nhap");
+  assert.equal(login.status, 422);
+  assert.match(login.data.error, /Dán văn bản/);
+  assert.equal((await bad(SITE + "/file.zip")).status, 422);
+  assert.equal((await bad(SITE + "/to-qua")).status, 413);
+  // Khác origin → chặn CSRF như mọi POST
+  assert.equal((await B.req("/api/fetch-page", { method: "POST", json: { url: SITE + "/bai-viet" }, origin: "https://evil.example" })).status, 403);
+});
+
+test("dán link: tải ảnh trong bài; không nhận SVG", async () => {
+  const img = await B.req("/api/fetch-image?url=" + encodeURIComponent(SITE + "/anh.png"));
+  assert.equal(img.status, 200);
+  assert.equal(img.headers.get("content-type"), "image/png");
+  assert.match(img.headers.get("content-security-policy") || "", /sandbox/);
+  assert.equal((await B.req("/api/fetch-image?url=" + encodeURIComponent(SITE + "/anh.svg"))).status, 422);
+  assert.equal((await client().req("/api/fetch-image?url=" + encodeURIComponent(SITE + "/anh.png"))).status, 401);
+});
+
 test("route lạ và method sai", async () => {
   assert.equal((await A.req("/api/khongco")).status, 401);
   assert.equal((await B.req("/api/khongco")).status, 404);

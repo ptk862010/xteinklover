@@ -251,15 +251,15 @@ export async function logout(env: Env, url: URL, auth: SessionAuth | null): Prom
   return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie(url) });
 }
 
-export async function me(env: Env, auth: SessionAuth): Promise<Response> {
+export async function me(env: Env, user: db.UserRow): Promise<Response> {
   const lim = limits(env);
   const [usage, today, google] = await Promise.all([
-    db.userUsage(env.DB, auth.user.id),
-    db.peekAttempt(env.DB, uploadKeyUser(auth.user.id), nowSec(), DAY),
-    db.hasIdentity(env.DB, auth.user.id, "google"),
+    db.userUsage(env.DB, user.id),
+    db.peekAttempt(env.DB, uploadKeyUser(user.id), nowSec(), DAY),
+    db.hasIdentity(env.DB, user.id, "google"),
   ]);
   return json({
-    user: { ...publicUser(auth.user), google },
+    user: { ...publicUser(user), google },
     usage: { books: usage.books, bytes: usage.bytes, uploadsToday: today },
     limits: {
       maxUploadBytes: lim.maxUploadBytes,

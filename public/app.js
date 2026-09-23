@@ -95,7 +95,10 @@
     $("#opdsKey").classList.remove("fresh");
     $("#copyKey").hidden = true;
     $("#keyNote").innerHTML = keyNoteDefault;
-    for (const id of ["pasteTitle", "pasteBody", "search", "pwCurrent", "pwNext", "delPass", "delConfirm", "pwUser", "linkPass", "linkUser"]) $("#" + id).value = "";
+    for (const id of ["pasteTitle", "pasteBody", "search", "pwCurrent", "pwNext", "delPass", "delConfirm", "pwUser", "linkPass", "linkUser", "tokenName", "tokenPass", "tokenUser"]) $("#" + id).value = "";
+    $("#tokenList").innerHTML = "";
+    $("#tokenNew").hidden = true;
+    $("#tokenValue").textContent = "";
     $("#queue").innerHTML = "";
     $("#usage").textContent = "";
     $("#accountInfo").textContent = "";
@@ -159,7 +162,58 @@
     $("#linkPass").hidden = !u.hasPassword;
     $("#linkUser").value = u.username;
     $("#unlinkBtn").hidden = !(u.google && u.hasPassword);
+    $("#tokenPass").hidden = !u.hasPassword;
+    $("#tokenUser").value = u.username;
   }
+
+  // ── Mã cho ứng dụng (plugin Obsidian) ──
+  async function loadTokens() {
+    const my = epoch;
+    try {
+      const list = await api("/api/tokens");
+      if (my !== epoch) return;
+      $("#tokenList").innerHTML = list.map((t) => `<li><div><b>${esc(t.name)}</b><span class="muted small">tạo ${esc(fmtDate(new Date(t.created).toISOString()))} · ${t.lastUsed ? "dùng lần cuối " + esc(fmtDate(new Date(t.lastUsed).toISOString())) : "chưa dùng"}</span></div><button class="btn tiny danger" data-revoke="${esc(t.id)}" type="button">Thu hồi</button></li>`).join("");
+    } catch { /* bỏ qua: danh sách mã không quan trọng bằng phần còn lại */ }
+  }
+
+  $("#tokenForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.submitter || $("#tokenForm button");
+    const name = $("#tokenName").value.trim() || "Obsidian";
+    await busy(btn, "Đang tạo…", async () => {
+      try {
+        const body = { name };
+        if (me.user.hasPassword) {
+          const pw = $("#tokenPass").value;
+          if (!pw) throw new Error("Nhập mật khẩu hiện tại để xác nhận");
+          body.proof = await passwordProof(me.user.username, pw);
+        }
+        const r = await api("/api/tokens", { json: body });
+        $("#tokenPass").value = ""; $("#tokenName").value = "";
+        $("#tokenValue").textContent = r.token;
+        $("#tokenNew").hidden = false;
+        toast("Đã tạo mã. Copy dán vào plugin ngay nhé");
+        loadTokens();
+      } catch (err) {
+        if (err.data?.reauth) {
+          try { sessionStorage.setItem("xl_reauth", "token"); } catch { /* bỏ qua */ }
+          toast("Xác nhận lại bằng Google trước khi tạo mã…");
+          try { await googleGo("login"); } catch (e2) { toast(e2.message, true); }
+        } else toast(err.message, true);
+      }
+    });
+  });
+
+  $("#tokenList").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-revoke]");
+    if (!btn || btn.dataset.busy) return;
+    if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = "Chắc chứ?"; setTimeout(() => { btn.dataset.armed = ""; if (!btn.dataset.busy) btn.textContent = "Thu hồi"; }, 2500); return; }
+    btn.dataset.armed = ""; btn.textContent = "Thu hồi";
+    await busy(btn, "Đang thu hồi…", async () => {
+      try { await api("/api/tokens/" + encodeURIComponent(btn.dataset.revoke), { method: "DELETE" }); toast("Đã thu hồi mã, app dùng mã đó hết gửi được"); loadTokens(); }
+      catch (err) { toast(err.message, true); }
+    });
+  });
 
   async function loadMe() {
     try {
@@ -222,6 +276,7 @@
         $("#authPass").value = "";
         $("#authCode").value = "";
         await loadMe();
+        consumeSharedLink();
         if (res.opdsKey) {
           showKey(res.opdsKey);
           openSheet("connectSheet");
@@ -434,6 +489,76 @@
     return ok;
   }
 
+  /** Link bài viết → EPUB → lên kệ. */
+  async function sendLink(raw) {
+    const url = (raw || "").trim();
+    if (!/^https?:\/\/\S+$/i.test(url)) return toast("Dán link bắt đầu bằng http:// hoặc https://", true);
+    const my = epoch;
+    let host = url;
+    try { host = new URL(url).hostname; } catch { /* để nguyên */ }
+    const q = queueItem(host);
+    try {
+      const conv = await converter();
+      const res = await conv.clipUrl(url, (msg) => q.set(msg));
+      if (my !== epoch) return;
+      const book = await upload(res, q);
+      if (my !== epoch) return;
+      q.done(`Đã lên kệ: ${res.title} (${res.note})`);
+      books.unshift(book); render();
+      refreshUsage();
+      return true;
+    } catch (e) { q.fail("Lỗi: " + e.message); }
+  }
+
+  $("#clipForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await busy($("#clipBtn"), "Đang lấy…", async () => {
+      if (await sendLink($("#clipUrl").value)) $("#clipUrl").value = "";
+    });
+  });
+
+  // Dán từ trang web: giữ cấu trúc (tiêu đề, danh sách, link) bằng cách đổi HTML trong clipboard sang Markdown
+  $("#pasteBody").addEventListener("paste", async (e) => {
+    const html = e.clipboardData?.getData("text/html");
+    if (!html || !/<(h[1-6]|p|ul|ol|li|a|strong|em|b|i|blockquote|table)\b/i.test(html)) return; // chữ trơn: để trình duyệt dán như thường
+    e.preventDefault();
+    const ta = e.currentTarget;
+    const plain = e.clipboardData.getData("text/plain");
+    let md = plain;
+    try { md = await (await converter()).htmlToMarkdown(html) || plain; } catch { /* lỗi thì dán chữ trơn */ }
+    ta.setRangeText(md, ta.selectionStart, ta.selectionEnd, "end");
+    ta.dispatchEvent(new Event("input"));
+  });
+
+  function selectTab(name) {
+    document.querySelectorAll("[data-tab]").forEach((x) => { const on = x.dataset.tab === name; x.classList.toggle("active", on); x.setAttribute("aria-selected", String(on)); });
+    document.querySelectorAll("[data-tab-panel]").forEach((p) => (p.hidden = p.dataset.tabPanel !== name));
+  }
+
+  // Chia sẻ từ app khác (Android share target, phím tắt iPhone): /?url=… hoặc ?text=… có link
+  function takeSharedLink() {
+    const p = new URLSearchParams(location.search);
+    const found = [p.get("url"), p.get("text"), p.get("title")].map((v) => (v || "").match(/https?:\/\/\S+/i)?.[0]).find(Boolean);
+    if (found) {
+      try { sessionStorage.setItem("xl_share", found); } catch { /* bỏ qua */ }
+      history.replaceState(null, "", "/");
+    }
+  }
+  function consumeSharedLink() {
+    let link = null;
+    try { link = sessionStorage.getItem("xl_share"); } catch { /* bỏ qua */ }
+    if (!link || !me) return;
+    try { sessionStorage.removeItem("xl_share"); } catch { /* bỏ qua */ }
+    // Không tự gửi: link /?url=… ai cũng tạo được (gửi qua chat/email) → phải bấm “Lên kệ” mới chạy
+    selectTab("link");
+    $("#clipUrl").value = link;
+    $("#clipForm").scrollIntoView({ block: "center" });
+    $("#clipBtn").focus();
+    let host = link;
+    try { host = new URL(link).hostname; } catch { /* để nguyên */ }
+    toast(`Bấm “Lên kệ” để lấy bài từ ${host}`);
+  }
+
   async function sendText() {
     const title = $("#pasteTitle").value.trim();
     const body = $("#pasteBody").value;
@@ -448,10 +573,7 @@
     });
   }
 
-  document.querySelectorAll("[data-tab]").forEach((t) => t.addEventListener("click", () => {
-    document.querySelectorAll("[data-tab]").forEach((x) => { x.classList.toggle("active", x === t); x.setAttribute("aria-selected", String(x === t)); });
-    document.querySelectorAll("[data-tab-panel]").forEach((p) => (p.hidden = p.dataset.tabPanel !== t.dataset.tab));
-  }));
+  document.querySelectorAll("[data-tab]").forEach((t) => t.addEventListener("click", () => selectTab(t.dataset.tab)));
 
   // Kéo thả: chỉ can thiệp khi kéo FILE (kéo chữ vào ô dán vẫn chạy bình thường)
   const drop = $("#drop");
@@ -503,7 +625,7 @@
     if (restore && wasOpen && lastFocus?.focus) lastFocus.focus();
   }
   $("#connectBtn").addEventListener("click", () => openSheet("connectSheet"));
-  $("#accountBtn").addEventListener("click", () => openSheet("accountSheet"));
+  $("#accountBtn").addEventListener("click", () => { openSheet("accountSheet"); loadTokens(); });
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeSheets()));
   back.addEventListener("click", () => closeSheets());
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheets(); });
@@ -562,7 +684,8 @@
         const [cur, nxt] = await Promise.all([passwordProof(u, current), passwordProof(u, next)]);
         await api("/api/password", { json: { current: cur, next: nxt } });
         $("#pwCurrent").value = ""; $("#pwNext").value = "";
-        toast("Đã đổi mật khẩu, các nơi khác đã bị đăng xuất. Nếu nghi bị lộ, bấm “Tạo khóa mới” ở ⚡ Nối máy.");
+        toast("Đã đổi mật khẩu: các nơi khác bị đăng xuất, mã ứng dụng bị thu hồi (tạo mã mới cho plugin). Nếu nghi bị lộ, bấm “Tạo khóa mới” ở ⚡ Nối máy.");
+        loadTokens();
       } catch (err) { toast(err.message, true); }
     });
   });
@@ -602,16 +725,24 @@
   async function boot() {
     const g = new URLSearchParams(location.search).get("google");
     if (g) history.replaceState(null, "", "/"); // bỏ ?google=… khỏi thanh địa chỉ
+    takeSharedLink();
+    $("#shortcutUrl").textContent = location.origin + "/?url=";
     try { cfg = { ...cfg, ...(await api("/api/config")) }; } catch { /* không có cấu hình: ẩn nút Google */ }
     $("#googleBox").hidden = !cfg.google;
     setAuthMode("login");
     if (g === "pick") return showPick();
     await loadMe();
+    consumeSharedLink();
     const msg = GOOGLE_RESULT[g];
     if (msg) toast(msg[0], !!msg[1]);
     let reauth = null;
     try { reauth = sessionStorage.getItem("xl_reauth"); sessionStorage.removeItem("xl_reauth"); } catch { /* bỏ qua */ }
-    if (me && g === "ok" && reauth === "delete") {
+    if (me && g === "ok" && reauth === "token") {
+      openSheet("accountSheet");
+      loadTokens();
+      $("#tokenForm").scrollIntoView({ block: "center" });
+      toast("Đã xác nhận bằng Google. Bấm “Tạo mã” lần nữa trong 10 phút.");
+    } else if (me && g === "ok" && reauth === "delete") {
       openSheet("accountSheet");
       $("#delConfirm").value = me.user.username;
       toast("Đã xác nhận bằng Google. Bấm “Xóa vĩnh viễn” lần nữa trong 10 phút nếu vẫn muốn xóa.");

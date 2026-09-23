@@ -1,7 +1,9 @@
 import * as accounts from "./accounts";
 import { unauthorized, userFromBasic, userFromSession } from "./auth";
 import * as books from "./books";
+import * as clip from "./clip";
 import * as oauth from "./oauth";
+import * as tokens from "./tokens";
 import { ensureSchema } from "./db";
 import { Env } from "./env";
 import { error, sameOrigin } from "./http";
@@ -63,6 +65,21 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     return error(404, "Không có");
   }
 
+  // ── Ứng dụng (plugin Obsidian…): mã Bearer, chỉ làm việc với kệ sách ──
+  const bearer = tokens.bearerToken(req.headers.get("Authorization"));
+  if (bearer !== undefined) {
+    const user = bearer ? await tokens.userFromBearer(env, bearer, ctx) : null;
+    if (!user) return error(401, "Mã ứng dụng sai hoặc đã bị thu hồi");
+    if (path === "/api/me" && method === "GET") return accounts.me(env, user);
+    if (path === "/api/books") {
+      if (method === "GET") return books.listBooks(env, user);
+      if (method === "POST") return books.upload(req, env, url, user, ctx);
+    }
+    const one = path.match(new RegExp(`^/api/books/${BOOK_ID}$`));
+    if (one && method === "DELETE") return books.remove(env, user, one[1], ctx);
+    return error(403, "Mã ứng dụng không dùng được cho việc này, đăng nhập trên web");
+  }
+
   // ── API cho trang web: cookie phiên ──
   if (method !== "GET" && !sameOrigin(req, url)) return error(403, "Sai nguồn gửi");
 
@@ -78,11 +95,20 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   if (path === "/api/google/start" && method === "POST") return oauth.start(req, env, url, auth);
   if (!auth) return error(401, "Cần đăng nhập");
 
-  if (path === "/api/me" && method === "GET") return accounts.me(env, auth);
+  if (path === "/api/me" && method === "GET") return accounts.me(env, auth.user);
+  if (path === "/api/tokens") {
+    if (method === "GET") return tokens.list(env, auth);
+    if (method === "POST") return tokens.create(req, env, auth);
+  }
+  const tok = path.match(/^\/api\/tokens\/([0-9a-f]{16})$/);
+  if (tok && method === "DELETE") return tokens.revoke(env, auth, tok[1]);
   if (path === "/api/password" && method === "POST") return accounts.changePassword(req, env, auth);
   if (path === "/api/opds-key" && method === "POST") return accounts.rotateOpdsKey(env, auth);
   if (path === "/api/google/unlink" && method === "POST") return oauth.unlink(env, auth);
   if (path === "/api/account" && method === "DELETE") return accounts.deleteAccount(req, env, url, auth, ctx);
+
+  if (path === "/api/fetch-page" && method === "POST") return clip.fetchPage(req, env, url, auth.user);
+  if (path === "/api/fetch-image" && method === "GET") return clip.fetchImage(env, url, auth.user);
 
   if (path === "/api/books") {
     if (method === "GET") return books.listBooks(env, auth.user);

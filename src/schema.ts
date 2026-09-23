@@ -94,4 +94,16 @@ export const MIGRATIONS: string[][] = [
       expires_at INTEGER NOT NULL
     )`,
   ],
+  // v3 — mã cho ứng dụng (plugin Obsidian…): Bearer token, lưu SHA-256, tối đa vài mã mỗi người
+  [
+    `CREATE TABLE IF NOT EXISTS app_tokens (
+      id TEXT PRIMARY KEY,
+      token_hash TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      last_used INTEGER NOT NULL DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS app_tokens_user ON app_tokens(user_id)`,
+  ],
 ];

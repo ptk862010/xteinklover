@@ -36,6 +36,8 @@ const VARS = {
   GOOGLE_CLIENT_ID: "e2e.apps.googleusercontent.com",
   GOOGLE_CLIENT_SECRET: "e2e-secret",
   GOOGLE_TOKEN_URL: "http://127.0.0.1:8798/token",
+  // Dán link: cho lấy trang từ trang báo giả ở 127.0.0.1:8797
+  FETCH_ALLOW_LOCAL: "1",
 };
 const varArgs = Object.entries(VARS).flatMap(([k, v]) => ["--var", `${k}:${v}`]);
 // Gọi thẳng wrangler bằng node (không qua shell) để taskkill /T diệt được cả workerd con

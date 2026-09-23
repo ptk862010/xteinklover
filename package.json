@@ -16,6 +16,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260922.1",
     "@types/node": "^26.6.2",
+    "@types/turndown": "^5.0.6",
     "@xmldom/xmldom": "^0.9.12",
     "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
@@ -23,11 +24,13 @@
     "wrangler": "^4.136.2"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "fflate": "^0.8.3",
     "foliate-js": "^1.0.1",
     "jszip": "^3.10.2",
     "marked": "^18.0.14",
-    "pdfjs-dist": "^6.3.289"
+    "pdfjs-dist": "^6.3.289",
+    "turndown": "^7.2.4"
   },
   "cloudflare": {
     "bindings": {

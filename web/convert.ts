@@ -127,9 +127,27 @@ export async function probePdf(file: File) {
   return probePdf(file);
 }
 
+/** Link bài viết → EPUB (Readability chỉ tải khi dùng). */
+export async function clipUrl(url: string, onProgress?: (msg: string) => void) {
+  const m = await import("./clip");
+  return m.clipUrl(url, onProgress);
+}
+
+/** Dán từ trang web → Markdown (turndown chỉ tải khi dùng). */
+export async function htmlToMarkdown(html: string): Promise<string> {
+  const m = await import("./clip");
+  return m.htmlToMarkdown(html);
+}
+
 declare global {
   interface Window {
-    XteinkConvert: { convertFile: typeof convertFile; probePdf: typeof probePdf; accept: string[] };
+    XteinkConvert: {
+      convertFile: typeof convertFile;
+      probePdf: typeof probePdf;
+      clipUrl: typeof clipUrl;
+      htmlToMarkdown: typeof htmlToMarkdown;
+      accept: string[];
+    };
   }
 }
-window.XteinkConvert = { convertFile, probePdf, accept: ACCEPT_EXTS };
+window.XteinkConvert = { convertFile, probePdf, clipUrl, htmlToMarkdown, accept: ACCEPT_EXTS };

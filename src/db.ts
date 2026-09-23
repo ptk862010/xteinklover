@@ -113,7 +113,7 @@ export async function sessionRecheckFails(db: D1Database, tokenHash: string): Pr
   return r?.recheck_fails ?? Number.MAX_SAFE_INTEGER;
 }
 
-/** Đổi mật khẩu và đăng xuất mọi phiên khác trong một transaction. */
+/** Đổi mật khẩu, đăng xuất mọi phiên khác và thu hồi mọi mã ứng dụng trong một transaction (lộ mật khẩu thì đổi là sạch). */
 export async function changePasswordAndRevoke(
   db: D1Database,
   userId: string,
@@ -123,6 +123,7 @@ export async function changePasswordAndRevoke(
   await db.batch([
     db.prepare("UPDATE users SET pass_hash = ?, pass_salt = ?, pass_iter = ? WHERE id = ?").bind(h.hash, h.salt, h.iterations, userId),
     db.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").bind(userId, keepTokenHash),
+    db.prepare("DELETE FROM app_tokens WHERE user_id = ?").bind(userId),
     db.prepare("UPDATE sessions SET recheck_fails = 0 WHERE token_hash = ?").bind(keepTokenHash),
   ]);
 }
@@ -181,6 +182,7 @@ export async function cronCleanup(db: D1Database, nowMs: number): Promise<void> 
     db.prepare(`DELETE FROM sessions WHERE user_id IN (${stale})`).bind(cutoff),
     db.prepare(`DELETE FROM devices WHERE user_id IN (${stale})`).bind(cutoff),
     db.prepare(`DELETE FROM identities WHERE user_id IN (${stale})`).bind(cutoff),
+    db.prepare(`DELETE FROM app_tokens WHERE user_id IN (${stale})`).bind(cutoff),
     db.prepare(`DELETE FROM users WHERE id IN (${stale})`).bind(cutoff),
     db.prepare("DELETE FROM oauth_pending WHERE expires_at <= ?").bind(nowMs),
   ]);
@@ -364,6 +366,7 @@ export async function deleteUserCascade(db: D1Database, userId: string, nowMs: n
     db.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM devices WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM identities WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM app_tokens WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM users WHERE id = ?").bind(userId),
   ]);
 }
@@ -436,4 +439,55 @@ export async function firstFreeUsername(db: D1Database, candidates: string[]): P
     .all<{ username: string }>();
   const taken = new Set(r.results.map((x) => x.username));
   return candidates.find((c) => !taken.has(c)) ?? null;
+}
+
+// ── mã cho ứng dụng (app_tokens) ──
+
+export interface AppTokenRow {
+  id: string;
+  token_hash: string;
+  user_id: string;
+  name: string;
+  created_at: number;
+  last_used: number;
+}
+
+export async function getAppTokenUser(db: D1Database, tokenHash: string): Promise<{ user: UserRow; tokenId: string; lastUsed: number } | null> {
+  const r = await db
+    .prepare("SELECT u.*, t.id AS token_id, t.last_used AS token_last_used FROM app_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?")
+    .bind(tokenHash)
+    .first<UserRow & { token_id: string; token_last_used: number }>();
+  if (!r) return null;
+  const { token_id, token_last_used, ...user } = r;
+  return { user, tokenId: token_id, lastUsed: token_last_used };
+}
+
+/** Ghi lần dùng cuối của mã, và tính là tài khoản còn hoạt động (cron không xóa tài khoản chỉ dùng qua plugin). */
+export async function touchAppToken(db: D1Database, tokenId: string, userId: string, nowMs: number): Promise<void> {
+  await db.batch([
+    db.prepare("UPDATE app_tokens SET last_used = ? WHERE id = ?").bind(nowMs, tokenId),
+    db.prepare("UPDATE users SET last_login = MAX(last_login, ?) WHERE id = ?").bind(nowMs, userId),
+  ]);
+}
+
+export async function listAppTokens(db: D1Database, userId: string): Promise<AppTokenRow[]> {
+  const r = await db.prepare("SELECT * FROM app_tokens WHERE user_id = ? ORDER BY created_at DESC").bind(userId).all<AppTokenRow>();
+  return r.results;
+}
+
+/** Thêm mã nếu người đó chưa đủ `max` mã (kiểm và ghi trong một câu lệnh). */
+export async function insertAppToken(db: D1Database, t: AppTokenRow, max: number): Promise<boolean> {
+  const r = await db
+    .prepare(
+      `INSERT INTO app_tokens (id, token_hash, user_id, name, created_at, last_used)
+       SELECT ?1, ?2, ?3, ?4, ?5, 0 WHERE (SELECT COUNT(*) FROM app_tokens WHERE user_id = ?3) < ?6`,
+    )
+    .bind(t.id, t.token_hash, t.user_id, t.name, t.created_at, max)
+    .run();
+  return r.meta.changes > 0;
+}
+
+export async function deleteAppToken(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM app_tokens WHERE id = ? AND user_id = ?").bind(id, userId).run();
+  return r.meta.changes > 0;
 }

@@ -139,3 +139,17 @@ code.key.fresh { background: color-mix(in srgb, var(--accent) 16%, transparent);
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .pick-title { font-family: Fraunces, Georgia, serif; font-size: 1.3rem; margin: 0 0 6px; }
 #googleSection .btn { margin-top: 4px; }
+
+/* Mã cho ứng dụng */
+.token-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.token-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: .88rem; }
+.token-list li > div { flex: 1; min-width: 0; }
+.token-list b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.token-new { margin: 8px 0; }
+
+/* Dán link */
+.clip-row { display: flex; gap: 8px; }
+.clip-row .input { flex: 1; min-width: 0; }
+.share-help { margin-top: 6px; }
+.share-help summary { cursor: pointer; }
+.share-help p { margin: 6px 0; }
