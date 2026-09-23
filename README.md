@@ -29,6 +29,8 @@ Thư viện: [foliate-js](https://github.com/johnfactotum/foliate-js) (MIT) đ�
 
 ## Nối Xteink
 
+Máy cần firmware **CrossPoint** (mã nguồn mở, đã kiểm với bản 1.6): firmware gốc của Xteink không có OPDS. Cài bằng Chrome/Edge trên máy tính ở https://crosspointreader.com/#flash-tools (máy mua qua bên thứ ba có thể bị khóa USB, xem mục mở khóa trên trang đó). Chưa cài được thì tải EPUB trên web rồi chép vào thẻ nhớ.
+
 1. Trên trang web, bấm **⚡ Nối máy**: có URL, User và khóa OPDS (khóa chỉ hiện một lần lúc tạo tài khoản hoặc khi bấm *Tạo khóa mới*).
 2. Trên máy: **Settings → System → OPDS Servers → Add**
    - URL: `https://<địa chỉ>/opds`

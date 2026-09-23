@@ -32,7 +32,7 @@
       <p class="lead">Ném file hoặc dán bài viết vào đây, nó thành EPUB và nằm trên kệ riêng của bạn. Máy đọc sách mở kệ là tải về qua WiFi bất kỳ, không cần cắm cáp, không cần cùng mạng.</p>
       <ul class="points">
         <li>EPUB gửi thẳng; MOBI, AZW3, PDF, CBZ, Markdown, TXT, HTML tự chuyển sang EPUB ngay trên trình duyệt</li>
-        <li>Máy đọc chạy CrossPoint kéo sách qua OPDS</li>
+        <li>Máy cần firmware <b>CrossPoint</b> (miễn phí, mã nguồn mở; firmware gốc của Xteink không kéo sách được): cài bằng Chrome trên máy tính ở <a href="https://crosspointreader.com/#flash-tools" target="_blank" rel="noopener">crosspointreader.com</a></li>
         <li>Miễn phí, kệ của ai người nấy xem</li>
       </ul>
     </div>
@@ -148,6 +148,7 @@
 <!-- Nối máy -->
 <aside class="sheet" id="connectSheet" hidden role="dialog" aria-modal="true" aria-labelledby="connectTitle">
   <div class="sheet-head"><h3 id="connectTitle">Nối Xteink với kệ này</h3><button class="btn ghost" data-close type="button" aria-label="Đóng">✕</button></div>
+  <p class="need-fw small">Cần firmware <b>CrossPoint</b> (đã kiểm với bản 1.6). Firmware gốc của Xteink không có OPDS nên không kéo sách được. Cài: mở <a href="https://crosspointreader.com/#flash-tools" target="_blank" rel="noopener">crosspointreader.com → Flash tools</a> bằng Chrome/Edge trên máy tính, cắm máy qua cáp USB-C. Máy mua qua bên thứ ba (vd AliExpress) có thể bị khóa USB, xem mục mở khóa trên trang đó. Chưa cài được thì bấm <b>Tải</b> ở từng cuốn rồi chép vào thẻ nhớ.</p>
   <ol class="steps">
     <li>Trên máy: <b>Settings → System → OPDS Servers → Add</b></li>
     <li>Điền:

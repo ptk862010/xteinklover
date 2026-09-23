@@ -153,3 +153,7 @@ code.key.fresh { background: color-mix(in srgb, var(--accent) 16%, transparent);
 .share-help { margin-top: 6px; }
 .share-help summary { cursor: pointer; }
 .share-help p { margin: 6px 0; }
+
+/* Nhắc cần firmware CrossPoint */
+.need-fw { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 10%, transparent); line-height: 1.5; }
+.need-fw a, .points a { color: var(--accent); }
