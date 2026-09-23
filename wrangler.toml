@@ -4,17 +4,35 @@ name = "xteinklover"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
-# Trang upload + bộ chuyển đổi chạy trên trình duyệt. Worker chạy trước để chặn Basic auth.
+# Trang tĩnh (public/) do Cloudflare phục vụ thẳng, miễn phí, không tính vào 100k request/ngày.
+# Worker chỉ chạy cho API, feed OPDS và tải sách.
 [assets]
 directory = "public"
 binding = "ASSETS"
-run_worker_first = true
+run_worker_first = ["/api/*", "/opds", "/opds/*", "/books/*", "/auth/*"]
 
-# Không ghi id: Cloudflare tự tạo namespace KV lúc deploy lần đầu.
-# KV free: 1 GB, value tối đa 25 MB, 1.000 ghi/ngày, không cần gắn thẻ như R2.
+# Không ghi id: Cloudflare tự tạo lúc deploy lần đầu. Worker tự tạo bảng D1 khi chạy.
+# KV free: 1 GB, 25 MB/file, 1.000 ghi/ngày — chỉ giữ file EPUB.
 [[kv_namespaces]]
 binding = "BOOKS"
+
+# D1 free: 5 triệu đọc, 100.000 ghi/ngày — tài khoản, phiên, danh mục sách.
+# Tên khác bản hosted của tác giả (xteinklover-db) để lỡ chạy `npm run deploy` trên tài khoản tác giả
+# cũng không dính vào database đang chạy thật. Tác giả chỉ deploy bằng `npm run deploy:hosted`.
+[[d1_databases]]
+binding = "DB"
+database_name = "xteinklover-data"
+
+# Workers Logs (free 200k dòng/ngày) để xem lỗi 500 sau khi xảy ra
+[observability]
+enabled = true
+
+# Dọn dẹp mỗi giờ: phiên hết hạn, bộ đếm cũ, tài khoản rỗng bỏ hoang, file KV chờ xóa (tối đa 40/lần)
+[triggers]
+crons = ["15 * * * *"]
 
 [vars]
 CATALOG_TITLE = "Xteink Lover"
 MAX_UPLOAD_MB = "20"
+# Tự cài cho một mình: 1 tài khoản. Muốn cho cả nhà dùng thì tăng lên.
+MAX_USERS = "1"

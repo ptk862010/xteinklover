@@ -2,3 +2,9 @@ node_modules/
 .wrangler/
 .dev.vars
 public/convert.js
+public/convert/
+public/pdfjs/
+.env
+.env.*
+.dev.vars.*
+!.dev.vars.example

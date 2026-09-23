@@ -1,111 +1,120 @@
-import { isAuthorized, unauthorized } from "./auth";
-import { BookMeta, OPDS_CONTENT_TYPE, acquisitionFeed, newBookId } from "./opds";
+import * as accounts from "./accounts";
+import { unauthorized, userFromBasic, userFromSession } from "./auth";
+import * as books from "./books";
+import * as oauth from "./oauth";
+import { ensureSchema } from "./db";
+import { Env } from "./env";
+import { error, sameOrigin } from "./http";
 
-export interface Env {
-  BOOKS: KVNamespace;
-  ASSETS: Fetcher;
-  OPDS_USER: string;
-  OPDS_PASSWORD: string;
-  CATALOG_TITLE: string;
-  MAX_UPLOAD_MB: string;
-}
+export type { Env } from "./env";
 
-const KEY_PREFIX = "book:";
+const BOOK_ID = "([a-z0-9]{9,24})";
 
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8" } });
-}
-
-function baseUrl(req: Request): string {
-  const u = new URL(req.url);
-  return `${u.protocol}//${u.host}`;
-}
-
-/** KV list trả theo key tăng dần; id tăng theo thời gian nên đảo lại là mới nhất trước. */
-async function listBooks(env: Env): Promise<BookMeta[]> {
-  const out: BookMeta[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await env.BOOKS.list<BookMeta>({ prefix: KEY_PREFIX, cursor });
-    for (const k of page.keys) if (k.metadata) out.push(k.metadata);
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor);
-  return out.sort((a, b) => (a.id < b.id ? 1 : -1));
-}
-
-function cleanText(v: FormDataEntryValue | null, fallback: string, max = 200): string {
-  const s = typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
-  return (s || fallback).slice(0, max);
-}
-
-async function handleUpload(req: Request, env: Env): Promise<Response> {
-  const form = await req.formData();
-  const file = form.get("file");
-  if (!(file instanceof File)) return json({ error: "Thiếu file" }, 400);
-  const maxBytes = Number(env.MAX_UPLOAD_MB || 20) * 1024 * 1024;
-  if (file.size > maxBytes) return json({ error: `File quá ${env.MAX_UPLOAD_MB} MB` }, 413);
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
-  if (!isZip) return json({ error: "Chỉ nhận EPUB (chuyển đổi trên trình duyệt trước khi gửi)" }, 415);
-
-  const meta: BookMeta = {
-    id: newBookId(),
-    title: cleanText(form.get("title"), file.name.replace(/\.epub$/i, "") || "Không tên"),
-    author: cleanText(form.get("author"), ""),
-    size: bytes.length,
-    added: new Date().toISOString(),
-  };
-  await env.BOOKS.put(KEY_PREFIX + meta.id, bytes, { metadata: meta });
-  return json({ ok: true, book: meta });
-}
-
-async function handleDownload(id: string, env: Env): Promise<Response> {
-  const { value, metadata } = await env.BOOKS.getWithMetadata<BookMeta>(KEY_PREFIX + id, "arrayBuffer");
-  if (!value) return new Response("Không có sách này", { status: 404 });
-  const name = (metadata?.title ?? id).replace(/[^A-Za-z0-9 ._-]+/g, "_").slice(0, 80) || id;
-  return new Response(value, {
-    headers: {
-      "Content-Type": "application/epub+zip",
-      "Content-Length": String(value.byteLength),
-      "Content-Disposition": `attachment; filename="${name}.epub"`,
-      "Cache-Control": "private, max-age=0",
-    },
+/**
+ * Trình duyệt mở thẳng /opds hoặc link sách mà chưa đăng nhập: trả trang giải thích thay vì hộp Basic auth
+ * (người dùng dễ gõ mật khẩu tài khoản vào đó). Máy đọc sách không gửi Sec-Fetch-* nên vẫn nhận 401 Basic.
+ */
+function deviceOnlyPage(): Response {
+  const html = `<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Xteink Lover</title><body style="font:16px/1.6 system-ui,sans-serif;max-width:34rem;margin:3rem auto;padding:0 1rem">
+<h1>Địa chỉ này dành cho máy đọc sách</h1>
+<p>Điền địa chỉ <b>/opds</b> vào máy Xteink (Settings → System → OPDS Servers), với <b>tên đăng nhập</b> và <b>khóa OPDS</b>.
+Đừng nhập mật khẩu tài khoản ở đây.</p><p><a href="/">← Về trang Xteink Lover</a></p></body></html>`;
+  return new Response(html, {
+    status: 401,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
   });
 }
 
+function isBrowserNavigation(req: Request): boolean {
+  return req.headers.get("Sec-Fetch-Mode") === "navigate" || req.headers.get("Sec-Fetch-Dest") === "document";
+}
+
+async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(req.url);
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const method = req.method.toUpperCase();
+
+  const isApi = path.startsWith("/api/");
+  const isDevice = path === "/opds" || path === "/opds/catalog" || path.startsWith("/books/");
+  const isOauth = path === "/auth/google/callback";
+  // Trang tĩnh (index.html, app.js, css) công khai; dữ liệu nằm sau API
+  if (!isApi && !isDevice && !isOauth) {
+    if (method === "GET" || method === "HEAD") return env.ASSETS.fetch(req);
+    return error(405, "Không hỗ trợ");
+  }
+
+  if (path === "/api/config" && method === "GET") return oauth.config(env);
+
+  await ensureSchema(env.DB);
+
+  // ── Google chuyển về sau khi đăng nhập ──
+  if (isOauth) return method === "GET" ? oauth.callback(req, env, url) : error(405, "Không hỗ trợ");
+
+  // ── Máy đọc sách: Basic auth bằng khóa OPDS (trình duyệt đã đăng nhập cũng tải được sách) ──
+  if (isDevice) {
+    if (method !== "GET" && method !== "HEAD") return error(405, "Không hỗ trợ");
+    const session = await userFromSession(env.DB, req, url);
+    const user = session?.user ?? (await userFromBasic(env.DB, req.headers.get("Authorization")));
+    if (!user) return isBrowserNavigation(req) ? deviceOnlyPage() : unauthorized();
+    if (path === "/opds" || path === "/opds/catalog") return books.opdsFeed(env, url, user);
+    const dl = path.match(new RegExp(`^/books/${BOOK_ID}\\.epub$`));
+    if (dl) return books.download(env, user, dl[1]);
+    return error(404, "Không có");
+  }
+
+  // ── API cho trang web: cookie phiên ──
+  if (method !== "GET" && !sameOrigin(req, url)) return error(403, "Sai nguồn gửi");
+
+  if (path === "/api/signup" && method === "POST") return accounts.signup(req, env, url);
+  if (path === "/api/login" && method === "POST") return accounts.login(req, env, url, ctx);
+
+  if (path === "/api/google/pending" && method === "GET") return oauth.pendingInfo(req, env, url);
+  if (path === "/api/google/signup" && method === "POST") return oauth.signup(req, env, url);
+  if (path === "/api/google/cancel" && method === "POST") return oauth.cancelPending(url);
+
+  const auth = await userFromSession(env.DB, req, url);
+  if (path === "/api/logout" && method === "POST") return accounts.logout(env, url, auth);
+  if (path === "/api/google/start" && method === "POST") return oauth.start(req, env, url, auth);
+  if (!auth) return error(401, "Cần đăng nhập");
+
+  if (path === "/api/me" && method === "GET") return accounts.me(env, auth);
+  if (path === "/api/password" && method === "POST") return accounts.changePassword(req, env, auth);
+  if (path === "/api/opds-key" && method === "POST") return accounts.rotateOpdsKey(env, auth);
+  if (path === "/api/google/unlink" && method === "POST") return oauth.unlink(env, auth);
+  if (path === "/api/account" && method === "DELETE") return accounts.deleteAccount(req, env, url, auth, ctx);
+
+  if (path === "/api/books") {
+    if (method === "GET") return books.listBooks(env, auth.user);
+    if (method === "POST") return books.upload(req, env, url, auth.user, ctx);
+  }
+  const one = path.match(new RegExp(`^/api/books/${BOOK_ID}$`));
+  if (one && method === "DELETE") return books.remove(env, auth.user, one[1], ctx);
+
+  return error(404, "Không có");
+}
+
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
-    if (!env.OPDS_USER || !env.OPDS_PASSWORD) return new Response("Chưa đặt OPDS_USER / OPDS_PASSWORD (secret của worker)", { status: 500 });
-    if (!isAuthorized(req.headers.get("Authorization"), env.OPDS_USER, env.OPDS_PASSWORD)) return unauthorized();
-
-    const url = new URL(req.url);
-    const path = url.pathname.replace(/\/+$/, "") || "/";
-    const method = req.method.toUpperCase();
-
-    if (method === "GET" && (path === "/opds" || path === "/opds/catalog")) {
-      const books = await listBooks(env);
-      const updated = books[0]?.added ?? new Date().toISOString();
-      return new Response(acquisitionFeed({ base: baseUrl(req), title: env.CATALOG_TITLE || "Xteink Lover", books, updated }), {
-        headers: { "Content-Type": OPDS_CONTENT_TYPE, "Cache-Control": "no-store" },
-      });
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    try {
+      return await route(req, env, ctx);
+    } catch (e) {
+      console.error("xteinklover error", req.method, new URL(req.url).pathname, e instanceof Error ? e.stack : e);
+      // Hết quota free trong ngày (D1/KV) — báo rõ thay vì "lỗi máy chủ"
+      if (/free tier|daily .*limit|limit exceeded|KV .*limit/i.test(String(e))) {
+        return error(503, "Hệ thống đã dùng hết lượt miễn phí hôm nay, thử lại sau 7 giờ sáng");
+      }
+      return error(500, "Lỗi máy chủ, thử lại sau");
     }
+  },
 
-    const dl = path.match(/^\/books\/([a-z0-9]+)\.epub$/);
-    if (method === "GET" && dl) return handleDownload(dl[1], env);
-
-    if (path === "/api/me" && method === "GET") return json({ user: env.OPDS_USER });
-
-    if (path === "/api/books") {
-      if (method === "GET") return json(await listBooks(env));
-      if (method === "POST") return handleUpload(req, env);
-    }
-    const one = path.match(/^\/api\/books\/([a-z0-9]+)$/);
-    if (one && method === "DELETE") {
-      await env.BOOKS.delete(KEY_PREFIX + one[1]);
-      return json({ ok: true });
-    }
-
-    if (method === "GET") return env.ASSETS.fetch(req);
-    return new Response("Không hỗ trợ", { status: 405 });
+  /** Cron mỗi giờ (wrangler.toml [triggers]): dọn phiên hết hạn, bộ đếm cũ, tài khoản rỗng bỏ hoang, xóa file KV đang chờ. */
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      (async () => {
+        await ensureSchema(env.DB);
+        await accounts.cronHousekeeping(env);
+      })(),
+    );
   },
 } satisfies ExportedHandler<Env>;

@@ -1,5 +1,5 @@
 # Bản hosted của tác giả: https://app.xteinklover.workers.dev
-# Deploy: npm run deploy:hosted. OPDS_USER và OPDS_PASSWORD là secret của worker "app".
+# Deploy: npm run deploy:hosted
 name = "app"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
@@ -7,12 +7,38 @@ compatibility_date = "2026-09-01"
 [assets]
 directory = "public"
 binding = "ASSETS"
-run_worker_first = true
+run_worker_first = ["/api/*", "/opds", "/opds/*", "/books/*", "/auth/*"]
 
 [[kv_namespaces]]
 binding = "BOOKS"
 id = "ca8965022142413a8f1184565e6eef09"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "xteinklover-db"
+database_id = "bf8854bf-e7be-40a0-ad58-cf146a76e8f3"
+
+[observability]
+enabled = true
+
+# Dọn dẹp mỗi giờ: phiên hết hạn, bộ đếm cũ, tài khoản rỗng bỏ hoang, file KV chờ xóa (tối đa 40/lần)
+[triggers]
+crons = ["15 * * * *"]
+
 [vars]
-CATALOG_TITLE = "Xteink Lover — Kệ sách của Kiên"
+CATALOG_TITLE = "Xteink Lover"
 MAX_UPLOAD_MB = "20"
+# Gói free dùng chung cả hệ thống: KV 1 GB và 1.000 ghi/ngày.
+# MAX_USERS × MAX_STORAGE_MB_PER_USER ≤ MAX_STORAGE_MB_TOTAL: không ai chiếm được phần của người khác.
+# Tài khoản rỗng không đăng nhập 14 ngày tự bị xóa (cron) để tài khoản rác không giữ chỗ mãi.
+# Công khai: ai cũng đăng ký được, không cần mã mời
+OPEN_SIGNUP = "1"
+# Đăng nhập bằng Google (Client secret là secret: wrangler secret put GOOGLE_CLIENT_SECRET)
+GOOGLE_CLIENT_ID = "684909543360-j8llej26mnd4aficuscu5bnq82i8gcs7.apps.googleusercontent.com"
+MAX_USERS = "20"
+MAX_SIGNUPS_PER_DAY = "10"
+MAX_BOOKS_PER_USER = "300"
+MAX_STORAGE_MB_PER_USER = "45"
+MAX_STORAGE_MB_TOTAL = "900"
+MAX_UPLOADS_PER_DAY = "40"
+MAX_UPLOADS_PER_DAY_TOTAL = "900"

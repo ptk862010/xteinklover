@@ -9,7 +9,8 @@
     "deploy": "npm run build && wrangler deploy",
     "deploy:hosted": "npm run build && wrangler deploy -c wrangler.hosted.toml",
     "test": "tsx --test tests/*.test.ts",
-    "typecheck": "tsc -noEmit"
+    "typecheck": "tsc -noEmit && tsc -noEmit -p tsconfig.test.json",
+    "test:e2e": "npm run build && node scripts/e2e.mjs"
   },
   "license": "MIT",
   "devDependencies": {
@@ -22,22 +23,28 @@
     "wrangler": "^4.136.2"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
+    "foliate-js": "^1.0.1",
     "jszip": "^3.10.2",
-    "marked": "^18.0.14"
+    "marked": "^18.0.14",
+    "pdfjs-dist": "^6.3.289"
   },
   "cloudflare": {
     "bindings": {
-      "OPDS_USER": {
-        "description": "Tên đăng nhập kệ sách — nhập trên Xteink ở Settings → OPDS Servers. Shelf username."
-      },
-      "OPDS_PASSWORD": {
-        "description": "Mật khẩu kệ sách, đặt dài và khó đoán. Shelf password — use a long random one."
+      "SIGNUP_CODE": {
+        "description": "Mã mời để tạo tài khoản — tự đặt một từ bất kỳ, nhập lúc đăng ký lần đầu. Invite code required to sign up; pick any word."
       },
       "BOOKS": {
         "description": "Nơi lưu EPUB (KV). Để Cloudflare tự tạo. Stores your EPUBs."
       },
+      "DB": {
+        "description": "Tài khoản và danh mục sách (D1). Để Cloudflare tự tạo. Accounts and catalog."
+      },
       "CATALOG_TITLE": {
         "description": "Tên kệ hiện trên máy đọc. Catalog name shown on the reader."
+      },
+      "MAX_USERS": {
+        "description": "Số tài khoản tối đa (1 = chỉ mình bạn). Max accounts."
       }
     }
   }

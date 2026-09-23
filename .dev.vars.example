@@ -1,2 +1,1 @@
-OPDS_USER=reader # tên đăng nhập kệ (nhập trên Xteink)
-OPDS_PASSWORD= # mật khẩu kệ, đặt dài một chút
+SIGNUP_CODE= # mã mời để tạo tài khoản (tự đặt, ví dụ một từ bất kỳ). Bắt buộc: không đặt thì trang không cho đăng ký

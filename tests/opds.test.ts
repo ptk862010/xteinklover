@@ -24,3 +24,21 @@ test("acquisitionFeed có đúng những thứ CrossPoint đọc", () => {
   const { DOMParser } = require("@xmldom/xmldom") as { DOMParser: new () => { parseFromString(s: string, t: string): unknown } };
   assert.doesNotThrow(() => new DOMParser().parseFromString(xml, "text/xml"));
 });
+
+test("acquisitionFeed: link next/previous ở cấp feed, self là trang hiện tại", () => {
+  const xml = acquisitionFeed({
+    base: "https://x.example",
+    title: "K",
+    updated: "2026-09-22T10:00:00.000Z",
+    books: [],
+    self: "https://x.example/opds?page=2",
+    prev: "https://x.example/opds",
+    next: "https://x.example/opds?page=3&a=b",
+  });
+  const beforeEntries = xml.split("<entry>")[0];
+  assert.ok(beforeEntries.includes('rel="previous"'));
+  assert.ok(beforeEntries.includes('href="https://x.example/opds?page=3&amp;a=b"'), "escape & trong href");
+  assert.ok(xml.includes('<link rel="self" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="https://x.example/opds?page=2"/>'));
+  const none = acquisitionFeed({ base: "https://x.example", title: "K", updated: "2026-09-22T10:00:00.000Z", books: [] });
+  assert.ok(!none.includes('rel="next"') && !none.includes('rel="previous"'));
+});
