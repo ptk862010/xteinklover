@@ -1,7 +1,7 @@
 /**
  * Mã cho ứng dụng (plugin Obsidian, script…): gửi `Authorization: Bearer xlapp_…`.
- * Chỉ làm được việc với kệ sách (xem, gửi, xóa sách) và xem tài khoản — không đổi mật khẩu, không tạo mã mới,
- * không xóa tài khoản. Mã là 256 bit ngẫu nhiên nên chỉ cần SHA-256; hiện một lần lúc tạo, thu hồi riêng từng mã.
+ * Chỉ làm được việc với kệ sách (xem, gửi, xóa sách), xem tài khoản và tạo khóa OPDS mới (để plugin ghi vào máy
+ * đọc) — không đổi mật khẩu, không tạo mã mới, không xóa tài khoản. Mã là 256 bit ngẫu nhiên nên chỉ cần SHA-256; hiện một lần lúc tạo, thu hồi riêng từng mã.
  * Trình duyệt không tự gửi header Authorization, và trang khác không gọi được vì không bật CORS → không có CSRF.
  */
 import { FRESH_LOGIN_MS, hasPassword, recheckPassword } from "./accounts";

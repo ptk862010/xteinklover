@@ -164,6 +164,10 @@ code.key.fresh { background: color-mix(in srgb, var(--accent) 16%, transparent);
 /* Chân trang: tự dựng bản riêng */
 .foot { max-width: 1100px; margin: 40px auto 0; padding: 20px max(16px, env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); text-align: center; display: grid; gap: 10px; justify-items: center; }
 .foot p { margin: 0; max-width: 60ch; }
+.foot a { color: var(--accent); }
+.foot-actions .btn, .foot .deploy-btn { color: inherit; }
+.foot .deploy-btn { color: #fff; }
+.foot-self { display: grid; gap: 10px; justify-items: center; }
 .foot-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .foot-actions .btn { text-decoration: none; }
 .deploy-btn { background: #f38020; color: #fff; border-color: transparent; font-weight: 600; }

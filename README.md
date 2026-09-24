@@ -108,6 +108,7 @@ Cột "Mặc định" là giá trị khi không khai báo biến. `wrangler.toml
 | `MAX_STORAGE_MB_TOTAL` | 900 | Dung lượng tối đa cả hệ thống (KV free: 1 GB) |
 | `MAX_UPLOADS_PER_DAY` | 50 | Lượt gửi mỗi người mỗi ngày |
 | `MAX_UPLOADS_PER_DAY_TOTAL` | 900 | Lượt gửi cả hệ thống mỗi ngày (KV free: 1.000 ghi/ngày) |
+| `SHOW_SELF_HOST` | trống | `"1"` = hiện nút "Tự dựng" / Deploy to Cloudflare (bản chung của tác giả). Bản tự dựng để trống: chỉ có dòng ghi công nhỏ ở chân trang |
 | `GOOGLE_CLIENT_ID` | trống | Bật đăng nhập bằng Google (cần cả `GOOGLE_CLIENT_SECRET`) |
 | `GOOGLE_CLIENT_SECRET` (secret) | trống | Client secret của Google |
 
@@ -158,7 +159,7 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 
 `proof` = hex của PBKDF2-SHA256(mật khẩu, `"xteinklover|v1|" + username`, 600.000 vòng, 32 byte). Mọi request đổi dữ liệu phải có `Origin` cùng trang.
 
-**Mã ứng dụng** (`Authorization: Bearer xlapp_…`) chỉ dùng được cho `GET /api/me`, `GET /api/books`, `POST /api/books`, `DELETE /api/books/<id>`; không cần `Origin`. Việc khác trả 403.
+**Mã ứng dụng** (`Authorization: Bearer xlapp_…`) chỉ dùng được cho `GET /api/me`, `GET /api/books`, `POST /api/books`, `DELETE /api/books/<id>` và `POST /api/opds-key` (plugin tự ghi khóa OPDS mới vào máy đọc; người cầm mã vì vậy tải được sách trên kệ); không cần `Origin`. Việc khác trả 403.
 
 `POST /api/books`: body là file EPUB thô (`Content-Type: application/epub+zip`, bắt buộc `Content-Length`), tiêu đề và tác giả ở query `?title=&author=`.
 

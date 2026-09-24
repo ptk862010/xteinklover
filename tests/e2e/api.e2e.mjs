@@ -353,7 +353,7 @@ async function googleRound(c, { mode = "login", sub, email, proof: pf, tamper = 
 
 test("Google: trang báo đã bật; người mới chọn tên rồi thành tài khoản không mật khẩu", async () => {
   const cfg = await client().req("/api/config");
-  assert.deepEqual(cfg.data, { google: true, signup: true, needsCode: false });
+  assert.deepEqual(cfg.data, { google: true, signup: true, needsCode: false, selfHost: false });
   const g = client();
   const ip = { "CF-Connecting-IP": "203.0.113.50" };
   const r = await googleRound(g, { sub: "g-1001", email: "Phạm.Thử+x@gmail.com", headers: ip });
@@ -479,10 +479,15 @@ test("mã ứng dụng: tạo cần mật khẩu; gửi/xem/xóa sách bằng Be
   assert.equal((await fetch(BASE + "/api/books", { headers: H }).then((r) => r.json())).length, 0);
 
   // Mã không làm được việc của tài khoản
-  for (const [path, method] of [["/api/tokens", "GET"], ["/api/tokens", "POST"], ["/api/password", "POST"], ["/api/opds-key", "POST"], ["/api/account", "DELETE"], ["/api/google/start", "POST"]]) {
+  for (const [path, method] of [["/api/tokens", "GET"], ["/api/tokens", "POST"], ["/api/password", "POST"], ["/api/account", "DELETE"], ["/api/google/start", "POST"]]) {
     const r = await fetch(BASE + path, { method, headers: { ...H, "Content-Type": "application/json" }, body: method === "GET" ? undefined : "{}" });
     assert.equal(r.status, 403, `${method} ${path}`);
   }
+  // Plugin "Nối máy": mã ứng dụng lấy được khóa OPDS mới; khóa đó dùng được cho máy đọc
+  const k = await fetch(BASE + "/api/opds-key", { method: "POST", headers: H }).then((r) => r.json());
+  assert.match(k.opdsKey, /^[a-z2-9]{4}(-[a-z2-9]{4}){3}$/);
+  assert.equal(k.username, name);
+  assert.equal((await fetch(BASE + "/opds", { headers: basic(name, k.opdsKey) })).status, 200);
   // Mã sai / sai dạng
   assert.equal((await fetch(BASE + "/api/me", { headers: { Authorization: "Bearer xlapp_" + "0".repeat(64) } })).status, 401);
   assert.equal((await fetch(BASE + "/api/me", { headers: { Authorization: "Bearer abc" } })).status, 401);

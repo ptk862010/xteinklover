@@ -34,7 +34,7 @@
 <body>
 <header class="top">
   <a class="brand" href="/" aria-label="Xteink Lover"><span class="logo" aria-hidden="true">📖</span><span class="brand-text">Xteink <b>Lover</b></span></a>
-  <button class="btn ghost self-btn" id="selfBtn" type="button" aria-label="Tự dựng bản riêng" data-en-aria-label="Run your own copy"><span aria-hidden="true">☁</span><span class="self-label" data-en="Self-host">Tự dựng</span></button>
+  <button class="btn ghost self-btn" id="selfBtn" type="button" hidden aria-label="Tự dựng bản riêng" data-en-aria-label="Run your own copy"><span aria-hidden="true">☁</span><span class="self-label" data-en="Self-host">Tự dựng</span></button>
   <button class="btn ghost lang-btn" id="langBtn" type="button" aria-label="Switch to English" data-en="VI" data-en-aria-label="Chuyển sang tiếng Việt">EN</button>
   <div class="top-actions" id="topActions" hidden>
     <span class="count" id="count"></span>
@@ -163,12 +163,15 @@
 </main>
 
 <footer class="foot">
+  <p class="muted small" id="footCredit" data-en-html="Powered by <a href='https://github.com/ptk862010/xteinklover' target='_blank' rel='noopener'>Xteink Lover</a>, open source (MIT).">Chạy bằng <a href="https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener">Xteink Lover</a>, mã nguồn mở (MIT).</p>
+  <div id="footSelfHost" class="foot-self" hidden>
   <p class="muted small" data-en="Want your own private copy? Run it on your free Cloudflare account in a few clicks, and your books never leave it.">Muốn một bản riêng? Chạy trên tài khoản Cloudflare miễn phí của bạn, vài cú bấm là xong, sách không đi đâu khác.</p>
   <div class="foot-actions">
     <a class="btn deploy-btn" href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener"><span aria-hidden="true">☁</span> Deploy to Cloudflare</a>
     <a class="btn ghost" href="https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener" data-en="Source code on GitHub">Mã nguồn trên GitHub</a>
   </div>
   <p class="muted small" data-en-html="Free, open source (MIT). Obsidian users: try the <b>Xteink Sync</b> plugin.">Miễn phí, mã nguồn mở (MIT). Dùng Obsidian thì thử plugin <b>Xteink Sync</b>.</p>
+  </div>
 </footer>
 
 <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
@@ -228,7 +231,7 @@
 
   <div id="tokenSection">
     <h4 data-en="App tokens">Mã cho ứng dụng</h4>
-    <p class="muted small" data-en-html="Paste one into the <b>Xteink Sync</b> Obsidian plugin to send notes straight to this shelf from anywhere, without being on the same Wi-Fi as the reader. A token can only list, add and delete books; it can't change your password or account. Changing your password revokes all tokens.">Dán vào plugin Obsidian <b>Xteink Sync</b> để gửi note thẳng lên kệ này từ bất cứ đâu, không cần cùng WiFi với máy. Mã chỉ xem, gửi, xóa được sách; không đổi được mật khẩu hay tài khoản. Đổi mật khẩu thì mọi mã bị thu hồi.</p>
+    <p class="muted small" data-en-html="Paste one into the <b>Xteink Sync</b> Obsidian plugin to send notes straight to this shelf from anywhere, without being on the same Wi-Fi as the reader. A token can list, add and delete books, and set up your reader (the plugin's Connect reader creates a new OPDS key); it can't change your password or account. Changing your password revokes all tokens.">Dán vào plugin Obsidian <b>Xteink Sync</b> để gửi note thẳng lên kệ này từ bất cứ đâu, không cần cùng WiFi với máy. Mã xem, gửi, xóa được sách và nối được máy đọc (lệnh Nối máy đọc của plugin tạo khóa OPDS mới); không đổi được mật khẩu hay tài khoản. Đổi mật khẩu thì mọi mã bị thu hồi.</p>
     <ul id="tokenList" class="token-list"></ul>
     <div id="tokenNew" class="token-new" hidden>
       <div class="kv"><span data-en="Token">Mã</span><code id="tokenValue" class="key fresh"></code><button class="btn tiny" data-copy="tokenValue" type="button">Copy</button></div>

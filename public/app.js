@@ -6,7 +6,7 @@
   let books = [];
   let me = null;
   /** Cấu hình công khai của trang (/api/config): có bật Google không, đăng ký có cần mã mời không */
-  let cfg = { google: false, signup: true, needsCode: false };
+  let cfg = { google: false, signup: true, needsCode: false, selfHost: false };
   let lastUser = null;
   let authMode = "login";
   let authBusy = false;
@@ -300,7 +300,10 @@
       });
     } catch (err) {
       fail(tr(err.message));
-      if (err.status === 403 && /Đã đủ số tài khoản/.test(err.message)) {
+      if (err.status === 403 && /Đã đủ số tài khoản/.test(err.message) && !cfg.selfHost) {
+        // Bản tự dựng của người khác: đủ tài khoản thì hỏi chủ trang
+        $("#authHint").textContent = L("Trang này đã đủ tài khoản. Hỏi chủ trang để được thêm chỗ nhé.", "This site has no free accounts left. Ask its owner for a spot.");
+      } else if (err.status === 403 && /Đã đủ số tài khoản/.test(err.message)) {
         // Bản chung đã đủ chỗ: chỉ sang chỗ tự dựng bản riêng (HTML cố định, không có dữ liệu người dùng)
         $("#authHint").innerHTML = L(
           'Bản chung đã đủ người. Bạn có thể tự dựng bản riêng miễn phí: <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener">Deploy to Cloudflare</a>.',
@@ -765,6 +768,10 @@
     $("#shortcutUrl").textContent = location.origin + "/?url=";
     try { cfg = { ...cfg, ...(await api("/api/config")) }; } catch { /* không có cấu hình: ẩn nút Google */ }
     $("#googleBox").hidden = !cfg.google;
+    // Nút "Tự dựng" / Deploy chỉ có ở bản chung của tác giả (SHOW_SELF_HOST); bản tự dựng chỉ giữ dòng ghi công
+    $("#selfBtn").hidden = !cfg.selfHost;
+    $("#footSelfHost").hidden = !cfg.selfHost;
+    $("#footCredit").hidden = !!cfg.selfHost;
     setAuthMode("login");
     if (g === "pick") return showPick();
     await loadMe();

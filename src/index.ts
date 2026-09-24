@@ -74,6 +74,8 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     const user = bearer ? await tokens.userFromBearer(env, bearer, ctx) : null;
     if (!user) return error(401, "Mã ứng dụng sai hoặc đã bị thu hồi");
     if (path === "/api/me" && method === "GET") return accounts.me(env, user);
+    // Plugin "Nối máy với kệ": lấy khóa OPDS mới để ghi thẳng vào máy đọc
+    if (path === "/api/opds-key" && method === "POST") return accounts.rotateOpdsKey(env, user);
     if (path === "/api/books") {
       if (method === "GET") return books.listBooks(env, user);
       if (method === "POST") return books.upload(req, env, url, user, ctx);
@@ -106,7 +108,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   const tok = path.match(/^\/api\/tokens\/([0-9a-f]{16})$/);
   if (tok && method === "DELETE") return tokens.revoke(env, auth, tok[1]);
   if (path === "/api/password" && method === "POST") return accounts.changePassword(req, env, auth);
-  if (path === "/api/opds-key" && method === "POST") return accounts.rotateOpdsKey(env, auth);
+  if (path === "/api/opds-key" && method === "POST") return accounts.rotateOpdsKey(env, auth.user);
   if (path === "/api/google/unlink" && method === "POST") return oauth.unlink(env, auth);
   if (path === "/api/account" && method === "DELETE") return accounts.deleteAccount(req, env, url, auth, ctx);
 

@@ -299,11 +299,14 @@ export async function changePassword(req: Request, env: Env, auth: SessionAuth):
   return json({ ok: true });
 }
 
-/** Tạo khóa OPDS mới; khóa cũ trên máy hết hiệu lực ngay. */
-export async function rotateOpdsKey(env: Env, auth: SessionAuth): Promise<Response> {
+/**
+ * Tạo khóa OPDS mới; khóa cũ trên máy hết hiệu lực ngay. Gọi được từ web (phiên) và từ mã ứng dụng
+ * (plugin Obsidian tự ghi khóa mới vào máy đọc qua WiFi).
+ */
+export async function rotateOpdsKey(env: Env, user: db.UserRow): Promise<Response> {
   const opdsKey = newReadableKey();
-  await db.updateOpdsKey(env.DB, auth.user.id, await opdsKeyHash(opdsKey));
-  return json({ opdsKey });
+  await db.updateOpdsKey(env.DB, user.id, await opdsKeyHash(opdsKey));
+  return json({ opdsKey, username: user.username });
 }
 
 export async function deleteAccount(req: Request, env: Env, url: URL, auth: SessionAuth, ctx: ExecutionContext): Promise<Response> {

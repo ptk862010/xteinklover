@@ -27,7 +27,7 @@ const CALLBACK_WINDOW = 15 * 60;
 
 /** Cấu hình công khai cho trang web (không đụng D1). */
 export function config(env: Env): Response {
-  return json({ google: googleEnabled(env), signup: signupOpen(env), needsCode: !!env.SIGNUP_CODE?.trim() });
+  return json({ google: googleEnabled(env), signup: signupOpen(env), needsCode: !!env.SIGNUP_CODE?.trim(), selfHost: env.SHOW_SELF_HOST === "1" });
 }
 
 /**
