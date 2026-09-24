@@ -43,7 +43,7 @@ export function acquisitionFeed(opts: FeedOptions): string {
     <id>urn:xteinklover:${b.id}</id>
     <updated>${b.added}</updated>
     <dc:date>${b.added.slice(0, 10)}</dc:date>
-    <content type="text">${escapeXml(`${(b.size / 1024).toFixed(0)} KB · thêm ${b.added.slice(0, 16).replace("T", " ")}`)}</content>
+    <content type="text">${escapeXml(`${(b.size / 1024).toFixed(0)} KB · ${b.added.slice(0, 16).replace("T", " ")}`)}</content>
     <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="${escapeXml(bookHref(opts.base, b.id))}"/>
   </entry>`,
     )

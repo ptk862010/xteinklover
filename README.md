@@ -173,7 +173,32 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 
 ## English
 
-Send-to-Kindle for **Xteink** readers running **CrossPoint** firmware. Create an account at https://app.xteinklover.workers.dev (or self-host with the Deploy button), drop files (EPUB, MOBI, AZW3, AZW, PRC, PDF, CBZ, Markdown, TXT, HTML) or paste text; they are converted to EPUB in your browser and added to your private OPDS catalog. On the reader, add `https://<host>/opds` under Settings → System → OPDS Servers with your username and your **OPDS key** as the password. Runs on the Cloudflare free plan (Workers + D1 + KV), no card required.
+**Send-to-Kindle for Xteink e-readers running CrossPoint firmware.** Drop a file (EPUB, MOBI, AZW3, AZW, PRC, PDF, CBZ, Markdown, TXT, HTML), paste text, or paste an article link. It is converted to EPUB in your browser and added to your private OPDS shelf. The reader pulls it over Wi-Fi from anywhere. The interface is in English and Vietnamese (EN/VI button, or `?lang=en`).
+
+- Hosted: https://app.xteinklover.workers.dev/?lang=en (a small free-tier instance with limited accounts)
+- Obsidian: the **Xteink Sync** plugin (Community plugins) sends notes here with an app token
+
+**Requires CrossPoint firmware** (open source, tested with 1.6); the stock Xteink firmware has no OPDS. Install it from Chrome/Edge on a computer at https://crosspointreader.com/#flash-tools.
+
+### Self-host in one click
+
+1. Press **Deploy to Cloudflare** at the top of this page and sign in to (or create) a free Cloudflare account. No card needed.
+2. When asked for **SIGNUP_CODE**, type an invite code of your choice. It's required: without it nobody can sign up, so strangers can't take your instance first. Cloudflare creates the KV namespace and the D1 database for you; tables are created on the first request.
+3. Open `https://xteinklover.<your-subdomain>.workers.dev` → **Create account** → enter your invite code.
+4. On the reader: Settings → System → OPDS Servers → Add → URL `https://xteinklover.<your-subdomain>.workers.dev/opds`, your username, and your **OPDS key** (shown under ⚡ Connect) as the password.
+
+`MAX_USERS` is `1` by default, so only you can sign up. Raise it in `wrangler.toml` to share with family or friends. Optional: Google sign-in (`GOOGLE_CLIENT_ID` var + `GOOGLE_CLIENT_SECRET` secret, see the Vietnamese section above), and all limits in the configuration table.
+
+From the command line instead:
+
+```bash
+npm install
+npx wrangler login
+npx wrangler secret put SIGNUP_CODE
+npm run deploy
+```
+
+Free plan limits (shared by the whole Cloudflare account): 100,000 Worker requests/day, KV 1 GB and 1,000 writes/day, D1 5 million reads and 100,000 writes/day. Quotas reset at 00:00 UTC.
 
 ## License
 

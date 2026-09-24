@@ -7,6 +7,9 @@
 <title>Xteink Lover: gửi sách lên máy đọc Xteink từ bất cứ đâu</title>
 <meta name="description" content="Gửi sách, truyện và bài báo lên máy đọc Xteink từ bất cứ đâu. Tự chuyển MOBI, AZW3, PDF, CBZ sang EPUB, dán link bài viết, máy kéo về qua OPDS. Miễn phí.">
 <link rel="canonical" href="https://app.xteinklover.workers.dev/">
+<link rel="alternate" hreflang="vi" href="https://app.xteinklover.workers.dev/">
+<link rel="alternate" hreflang="en" href="https://app.xteinklover.workers.dev/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://app.xteinklover.workers.dev/">
 <meta name="google-site-verification" content="w9tNlct-FEqcPEOyd6eWNQ85gENXweBVSwlhQcpIxBM">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Xteink Lover">
@@ -31,10 +34,11 @@
 <body>
 <header class="top">
   <a class="brand" href="/" aria-label="Xteink Lover"><span class="logo" aria-hidden="true">📖</span><span class="brand-text">Xteink <b>Lover</b></span></a>
+  <button class="btn ghost lang-btn" id="langBtn" type="button" aria-label="Switch to English" data-en="VI" data-en-aria-label="Chuyển sang tiếng Việt">EN</button>
   <div class="top-actions" id="topActions" hidden>
     <span class="count" id="count"></span>
-    <button class="btn ghost" id="connectBtn" type="button">⚡ Nối máy</button>
-    <button class="btn ghost" id="accountBtn" type="button" aria-label="Tài khoản"><span id="whoami">…</span></button>
+    <button class="btn ghost" id="connectBtn" type="button" data-en="⚡ Connect">⚡ Nối máy</button>
+    <button class="btn ghost" id="accountBtn" type="button" aria-label="Tài khoản" data-en-aria-label="Account"><span id="whoami">…</span></button>
   </div>
 </header>
 
@@ -42,32 +46,32 @@
   <!-- ── Chưa đăng nhập ── -->
   <section id="authView">
     <div class="hero">
-      <h1>Gửi sách lên <em>Xteink</em> từ bất cứ đâu.</h1>
-      <p class="lead">Ném file hoặc dán bài viết vào đây, nó thành EPUB và nằm trên kệ riêng của bạn. Máy đọc sách mở kệ là tải về qua WiFi bất kỳ, không cần cắm cáp, không cần cùng mạng.</p>
+      <h1 data-en-html="Send books to your <em>Xteink</em> from anywhere.">Gửi sách lên <em>Xteink</em> từ bất cứ đâu.</h1>
+      <p class="lead" data-en="Drop in a file or paste an article. It becomes an EPUB on your own shelf, and your e-reader downloads it over any Wi-Fi. No cable, no need to be on the same network.">Ném file hoặc dán bài viết vào đây, nó thành EPUB và nằm trên kệ riêng của bạn. Máy đọc sách mở kệ là tải về qua WiFi bất kỳ, không cần cắm cáp, không cần cùng mạng.</p>
       <ul class="points">
-        <li>EPUB gửi thẳng; MOBI, AZW3, PDF, CBZ, Markdown, TXT, HTML tự chuyển sang EPUB ngay trên trình duyệt</li>
-        <li>Máy cần firmware <b>CrossPoint</b> (miễn phí, mã nguồn mở; firmware gốc của Xteink không kéo sách được): cài bằng Chrome trên máy tính ở <a href="https://crosspointreader.com/#flash-tools" target="_blank" rel="noopener">crosspointreader.com</a></li>
-        <li>Miễn phí, kệ của ai người nấy xem</li>
+        <li data-en="EPUB goes straight in; MOBI, AZW3, PDF, CBZ, Markdown, TXT and HTML are converted to EPUB right in your browser">EPUB gửi thẳng; MOBI, AZW3, PDF, CBZ, Markdown, TXT, HTML tự chuyển sang EPUB ngay trên trình duyệt</li>
+        <li data-en-html="Your reader needs <b>CrossPoint</b> firmware (free, open source; the stock Xteink firmware can't download books): install it with Chrome on a computer at <a href='https://crosspointreader.com/#flash-tools' target='_blank' rel='noopener'>crosspointreader.com</a>">Máy cần firmware <b>CrossPoint</b> (miễn phí, mã nguồn mở; firmware gốc của Xteink không kéo sách được): cài bằng Chrome trên máy tính ở <a href="https://crosspointreader.com/#flash-tools" target="_blank" rel="noopener">crosspointreader.com</a></li>
+        <li data-en="Free, and your shelf is private to you">Miễn phí, kệ của ai người nấy xem</li>
       </ul>
     </div>
 
     <div class="panel auth-card" id="authCard">
       <div id="googleBox" hidden>
-        <button class="btn google wide" id="googleBtn" type="button"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Tiếp tục với Google</span></button>
-        <div class="or"><span>hoặc dùng tên đăng nhập + mật khẩu</span></div>
+        <button class="btn google wide" id="googleBtn" type="button"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span data-en="Continue with Google">Tiếp tục với Google</span></button>
+        <div class="or"><span data-en="or use a username and password">hoặc dùng tên đăng nhập + mật khẩu</span></div>
       </div>
       <div class="tabs" role="tablist">
-        <button class="tab active" data-auth-tab="login" type="button" role="tab" aria-selected="true">Đăng nhập</button>
-        <button class="tab" data-auth-tab="signup" type="button" role="tab" aria-selected="false">Tạo tài khoản</button>
+        <button class="tab active" data-auth-tab="login" type="button" role="tab" aria-selected="true" data-en="Sign in">Đăng nhập</button>
+        <button class="tab" data-auth-tab="signup" type="button" role="tab" aria-selected="false" data-en="Create account">Tạo tài khoản</button>
       </div>
       <form id="authForm" class="auth-form" autocomplete="on" novalidate>
-        <label class="field"><span>Tên đăng nhập</span>
-          <input id="authUser" class="input" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="32" placeholder="vd: kien">
+        <label class="field"><span data-en="Username">Tên đăng nhập</span>
+          <input id="authUser" class="input" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="32" placeholder="vd: kien" data-en-placeholder="e.g. alex">
         </label>
-        <label class="field"><span>Mật khẩu</span>
+        <label class="field"><span data-en="Password">Mật khẩu</span>
           <input id="authPass" class="input" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128">
         </label>
-        <label class="field" id="codeField" hidden><span>Mã mời (nếu có)</span>
+        <label class="field" id="codeField" hidden><span data-en="Invite code (if any)">Mã mời (nếu có)</span>
           <input id="authCode" class="input" name="code" autocomplete="off" autocapitalize="none" spellcheck="false">
         </label>
         <p class="hint muted small" id="authHint">Chưa có tài khoản? Bấm “Tạo tài khoản”.</p>
@@ -78,18 +82,18 @@
 
     <!-- Google đã xác nhận, người mới: chọn tên đăng nhập (tên này điền vào máy đọc sách) -->
     <div class="panel auth-card" id="pickCard" hidden>
-      <h2 class="pick-title">Chọn tên đăng nhập</h2>
-      <p class="hint muted small">Google đã xác nhận. Tên này là ô <b>User</b> khi nối máy Xteink, và không đổi được về sau: chọn tên ngắn, dễ gõ.</p>
+      <h2 class="pick-title" data-en="Pick a username">Chọn tên đăng nhập</h2>
+      <p class="hint muted small" data-en-html="Google confirmed it's you. This name is the <b>User</b> field when you connect your Xteink, and it can't be changed later: pick something short and easy to type.">Google đã xác nhận. Tên này là ô <b>User</b> khi nối máy Xteink, và không đổi được về sau: chọn tên ngắn, dễ gõ.</p>
       <form id="pickForm" class="auth-form" novalidate>
-        <label class="field"><span>Tên đăng nhập</span>
+        <label class="field"><span data-en="Username">Tên đăng nhập</span>
           <input id="pickUser" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="32">
         </label>
-        <label class="field" id="pickCodeField" hidden><span>Mã mời</span>
+        <label class="field" id="pickCodeField" hidden><span data-en="Invite code">Mã mời</span>
           <input id="pickCode" class="input" autocomplete="off" autocapitalize="none" spellcheck="false">
         </label>
         <p class="form-error" id="pickError" role="alert" hidden></p>
-        <button class="btn primary wide" id="pickSubmit" type="submit">Tạo tài khoản</button>
-        <button class="btn ghost wide" id="pickCancel" type="button">Hủy</button>
+        <button class="btn primary wide" id="pickSubmit" type="submit" data-en="Create account">Tạo tài khoản</button>
+        <button class="btn ghost wide" id="pickCancel" type="button" data-en="Cancel">Hủy</button>
       </form>
     </div>
   </section>
@@ -97,46 +101,46 @@
   <!-- ── Đã đăng nhập ── -->
   <div id="appView" hidden>
     <section class="hero hero-sm">
-      <h1>Ném file vào, <em>kệ sách</em> trên Xteink tự đầy.</h1>
-      <p class="lead">EPUB gửi thẳng. MOBI, AZW3, PDF, truyện tranh CBZ, Markdown, TXT, HTML được chuyển thành EPUB ngay trên trình duyệt này.</p>
+      <h1 data-en-html="Drop files in, and your Xteink <em>shelf</em> fills itself.">Ném file vào, <em>kệ sách</em> trên Xteink tự đầy.</h1>
+      <p class="lead" data-en="EPUB goes straight in. MOBI, AZW3, PDF, CBZ comics, Markdown, TXT and HTML are converted to EPUB right here in your browser.">EPUB gửi thẳng. MOBI, AZW3, PDF, truyện tranh CBZ, Markdown, TXT, HTML được chuyển thành EPUB ngay trên trình duyệt này.</p>
     </section>
 
     <section class="intake">
       <div class="tabs" role="tablist">
-        <button class="tab active" data-tab="file" type="button" role="tab" aria-selected="true">Thả file</button>
-        <button class="tab" data-tab="link" type="button" role="tab" aria-selected="false">Dán link</button>
-        <button class="tab" data-tab="text" type="button" role="tab" aria-selected="false">Dán văn bản</button>
+        <button class="tab active" data-tab="file" type="button" role="tab" aria-selected="true" data-en="Drop files">Thả file</button>
+        <button class="tab" data-tab="link" type="button" role="tab" aria-selected="false" data-en="Paste link">Dán link</button>
+        <button class="tab" data-tab="text" type="button" role="tab" aria-selected="false" data-en="Paste text">Dán văn bản</button>
       </div>
 
       <label id="drop" class="drop panel" data-tab-panel="file" tabindex="0">
         <input type="file" id="file" multiple accept=".epub,.mobi,.prc,.azw,.azw3,.kf8,.pdf,.cbz,.md,.markdown,.txt,.html,.htm">
         <div class="drop-icon">⤵</div>
-        <div class="drop-title">Kéo thả vào đây, hoặc bấm để chọn</div>
-        <div class="chips"><span>.epub</span><span>.mobi</span><span>.azw3</span><span>.azw / .prc</span><span>.pdf</span><span>.cbz</span><span>.md</span><span>.txt</span><span>.html</span><span class="muted" id="maxSize">tối đa 20 MB</span></div>
+        <div class="drop-title" data-en="Drag and drop here, or click to choose">Kéo thả vào đây, hoặc bấm để chọn</div>
+        <div class="chips"><span>.epub</span><span>.mobi</span><span>.azw3</span><span>.azw / .prc</span><span>.pdf</span><span>.cbz</span><span>.md</span><span>.txt</span><span>.html</span><span class="muted" id="maxSize" data-en="up to 20 MB">tối đa 20 MB</span></div>
       </label>
-      <div class="pdf-mode" data-tab-panel="file" role="radiogroup" aria-label="Cách chuyển PDF">
+      <div class="pdf-mode" data-tab-panel="file" role="radiogroup" aria-label="Cách chuyển PDF" data-en-aria-label="How to convert PDFs">
         <span class="muted small">PDF:</span>
-        <label><input type="radio" name="pdfMode" value="auto" checked> Tự chọn</label>
-        <label><input type="radio" name="pdfMode" value="text"> Chữ <span class="muted small">(sách chữ, đổi cỡ chữ được)</span></label>
-        <label><input type="radio" name="pdfMode" value="image"> Ảnh trang <span class="muted small">(bản scan, sách nhiều hình)</span></label>
+        <label><input type="radio" name="pdfMode" value="auto" checked> <span data-en="Auto">Tự chọn</span></label>
+        <label><input type="radio" name="pdfMode" value="text"> <span data-en="Text">Chữ</span> <span class="muted small" data-en="(text books, resizable font)">(sách chữ, đổi cỡ chữ được)</span></label>
+        <label><input type="radio" name="pdfMode" value="image"> <span data-en="Page images">Ảnh trang</span> <span class="muted small" data-en="(scans, illustrated books)">(bản scan, sách nhiều hình)</span></label>
       </div>
 
       <div class="panel text-panel" data-tab-panel="link" hidden>
         <form id="clipForm" class="clip-row" novalidate>
-          <input id="clipUrl" class="input" type="url" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Dán link bài báo, blog…">
-          <button class="btn primary" id="clipBtn" type="submit">Lên kệ</button>
+          <input id="clipUrl" class="input" type="url" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Dán link bài báo, blog…" data-en-placeholder="Paste a link to an article or blog post…">
+          <button class="btn primary" id="clipBtn" type="submit" data-en="Send to shelf">Lên kệ</button>
         </form>
-        <p class="muted small">Trang tự cắt lấy nội dung chính và ảnh, bỏ quảng cáo, menu. Bài cần đăng nhập (báo trả phí): mở bài, bôi đen copy, rồi dán vào tab <b>Dán văn bản</b>.</p>
-        <details class="muted small share-help"><summary>Chia sẻ thẳng từ điện thoại</summary>
-          <p><b>Android (Chrome):</b> menu ⋮ → <i>Thêm vào màn hình chính</i> (hoặc <i>Cài đặt ứng dụng</i>). Từ đó đọc báo ở app nào cũng bấm <b>Chia sẻ → Xteink Lover</b> là bài lên kệ.</p>
-          <p><b>iPhone:</b> app Phím tắt → tạo phím tắt mới, bật <i>Hiển thị trong Bảng chia sẻ</i> (nhận URL), thêm tác vụ <i>Mở URL</i>: <code id="shortcutUrl"></code> rồi chèn biến <i>Đầu vào phím tắt</i> vào cuối.</p>
+        <p class="muted small" data-en-html="The page keeps just the article and its images, without ads or menus. For articles behind a login (paywalls): open it, select and copy, then paste into the <b>Paste text</b> tab.">Trang tự cắt lấy nội dung chính và ảnh, bỏ quảng cáo, menu. Bài cần đăng nhập (báo trả phí): mở bài, bôi đen copy, rồi dán vào tab <b>Dán văn bản</b>.</p>
+        <details class="muted small share-help"><summary data-en="Share straight from your phone">Chia sẻ thẳng từ điện thoại</summary>
+          <p data-en-html="<b>Android (Chrome):</b> menu ⋮ → <i>Add to Home screen</i> (or <i>Install app</i>). Then in any app, tap <b>Share → Xteink Lover</b> to put an article on your shelf."><b>Android (Chrome):</b> menu ⋮ → <i>Thêm vào màn hình chính</i> (hoặc <i>Cài đặt ứng dụng</i>). Từ đó đọc báo ở app nào cũng bấm <b>Chia sẻ → Xteink Lover</b> là bài lên kệ.</p>
+          <p data-en-html="<b>iPhone:</b> Shortcuts app → new shortcut, turn on <i>Show in Share Sheet</i> (receives URLs), add the <i>Open URLs</i> action: <code id='shortcutUrl'></code> then insert the <i>Shortcut Input</i> variable at the end."><b>iPhone:</b> app Phím tắt → tạo phím tắt mới, bật <i>Hiển thị trong Bảng chia sẻ</i> (nhận URL), thêm tác vụ <i>Mở URL</i>: <code id="shortcutUrl"></code> rồi chèn biến <i>Đầu vào phím tắt</i> vào cuối.</p>
         </details>
       </div>
 
       <div class="panel text-panel" data-tab-panel="text" hidden>
-        <input id="pasteTitle" class="input" placeholder="Tiêu đề sách" maxlength="200">
-        <textarea id="pasteBody" class="input" rows="9" placeholder="Dán Markdown, văn bản, hoặc copy từ trang web (giữ tiêu đề, danh sách, link)…"></textarea>
-        <div class="row-end"><button class="btn primary" id="pasteBtn" type="button">Làm thành EPUB và lên kệ</button></div>
+        <input id="pasteTitle" class="input" placeholder="Tiêu đề sách" data-en-placeholder="Book title" maxlength="200">
+        <textarea id="pasteBody" class="input" rows="9" placeholder="Dán Markdown, văn bản, hoặc copy từ trang web (giữ tiêu đề, danh sách, link)…" data-en-placeholder="Paste Markdown, plain text, or copy from a web page (headings, lists and links are kept)…"></textarea>
+        <div class="row-end"><button class="btn primary" id="pasteBtn" type="button" data-en="Make an EPUB and send to shelf">Làm thành EPUB và lên kệ</button></div>
       </div>
 
       <ul id="queue" class="queue" aria-live="polite"></ul>
@@ -144,14 +148,14 @@
 
     <section class="shelf">
       <div class="shelf-head">
-        <h2>Kệ sách</h2>
-        <input id="search" class="input search" type="search" placeholder="Tìm trong kệ…">
+        <h2 data-en="Bookshelf">Kệ sách</h2>
+        <input id="search" class="input search" type="search" placeholder="Tìm trong kệ…" data-en-placeholder="Search your shelf…">
       </div>
       <p class="usage muted small" id="usage"></p>
       <div id="books" class="grid"></div>
       <div id="empty" class="empty" hidden>
         <div class="empty-art">📚</div>
-        <p>Kệ đang trống. Thả file đầu tiên vào ô phía trên, rồi bấm <b>⚡ Nối máy</b> để máy đọc sách thấy kệ này.</p>
+        <p data-en-html="Your shelf is empty. Drop your first file above, then tap <b>⚡ Connect</b> so your e-reader can see this shelf.">Kệ đang trống. Thả file đầu tiên vào ô phía trên, rồi bấm <b>⚡ Nối máy</b> để máy đọc sách thấy kệ này.</p>
       </div>
     </section>
   </div>
@@ -161,76 +165,77 @@
 
 <!-- Nối máy -->
 <aside class="sheet" id="connectSheet" hidden role="dialog" aria-modal="true" aria-labelledby="connectTitle">
-  <div class="sheet-head"><h3 id="connectTitle">Nối Xteink với kệ này</h3><button class="btn ghost" data-close type="button" aria-label="Đóng">✕</button></div>
-  <p class="need-fw small">Cần firmware <b>CrossPoint</b> (đã kiểm với bản 1.6). Firmware gốc của Xteink không có OPDS nên không kéo sách được. Cài: mở <a href="https://crosspointreader.com/#flash-tools" target="_blank" rel="noopener">crosspointreader.com → Flash tools</a> bằng Chrome/Edge trên máy tính, cắm máy qua cáp USB-C. Máy mua qua bên thứ ba (vd AliExpress) có thể bị khóa USB, xem mục mở khóa trên trang đó. Chưa cài được thì bấm <b>Tải</b> ở từng cuốn rồi chép vào thẻ nhớ.</p>
+  <div class="sheet-head"><h3 id="connectTitle" data-en="Connect your Xteink to this shelf">Nối Xteink với kệ này</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
+  <p class="need-fw small" data-en-html="Requires <b>CrossPoint</b> firmware (tested with 1.6). The stock Xteink firmware has no OPDS, so it can't download books. To install: open <a href='https://crosspointreader.com/#flash-tools' target='_blank' rel='noopener'>crosspointreader.com → Flash tools</a> in Chrome/Edge on a computer and connect the reader with a USB-C cable. Readers bought from third-party sellers (e.g. AliExpress) may be USB-locked; see the unlock section on that site. Until then, tap <b>Download</b> on a book and copy it to the SD card.">Cần firmware <b>CrossPoint</b> (đã kiểm với bản 1.6). Firmware gốc của Xteink không có OPDS nên không kéo sách được. Cài: mở <a href="https://crosspointreader.com/#flash-tools" target="_blank" rel="noopener">crosspointreader.com → Flash tools</a> bằng Chrome/Edge trên máy tính, cắm máy qua cáp USB-C. Máy mua qua bên thứ ba (vd AliExpress) có thể bị khóa USB, xem mục mở khóa trên trang đó. Chưa cài được thì bấm <b>Tải</b> ở từng cuốn rồi chép vào thẻ nhớ.</p>
   <ol class="steps">
-    <li>Trên máy: <b>Settings → System → OPDS Servers → Add</b></li>
-    <li>Điền:
+    <li data-en-html="On the reader: <b>Settings → System → OPDS Servers → Add</b>">Trên máy: <b>Settings → System → OPDS Servers → Add</b></li>
+    <li><span data-en="Fill in:">Điền:</span>
       <div class="kv"><span>URL</span><code id="opdsUrl"></code><button class="btn tiny" data-copy="opdsUrl" type="button">Copy</button></div>
       <div class="kv"><span>User</span><code id="opdsUser">…</code><button class="btn tiny" data-copy="opdsUser" type="button">Copy</button></div>
-      <div class="kv"><span>Password</span><code id="opdsKey" class="key">khóa OPDS</code><button class="btn tiny" data-copy="opdsKey" id="copyKey" type="button" hidden>Copy</button></div>
-      <p class="muted small" id="keyNote">Password là <b>khóa OPDS</b>, không phải mật khẩu đăng nhập. Khóa chỉ hiện một lần lúc tạo. Quên thì tạo khóa mới rồi sửa lại trên máy.</p>
-      <button class="btn" id="rotateKey" type="button">Tạo khóa mới</button>
+      <div class="kv"><span>Password</span><code id="opdsKey" class="key" data-en="OPDS key">khóa OPDS</code><button class="btn tiny" data-copy="opdsKey" id="copyKey" type="button" hidden>Copy</button></div>
+      <p class="muted small" id="keyNote" data-en-html="The password is your <b>OPDS key</b>, not your account password. The key is shown only once, when it's created. If you lose it, create a new one and update it on the reader.">Password là <b>khóa OPDS</b>, không phải mật khẩu đăng nhập. Khóa chỉ hiện một lần lúc tạo. Quên thì tạo khóa mới rồi sửa lại trên máy.</p>
+      <button class="btn" id="rotateKey" type="button" data-en="Create a new key">Tạo khóa mới</button>
     </li>
-    <li>Mở kệ trên máy (<b>Settings → OPDS</b>) → sách mới nằm trên cùng → bấm tải.</li>
+    <li data-en-html="Open the shelf on the reader (<b>Settings → OPDS</b>) → new books are at the top → tap to download.">Mở kệ trên máy (<b>Settings → OPDS</b>) → sách mới nằm trên cùng → bấm tải.</li>
   </ol>
-  <p class="muted small">Máy kéo sách qua HTTPS từ bất kỳ WiFi nào, không cần cùng mạng với điện thoại hay máy tính.</p>
+  <p class="muted small" data-en="The reader downloads books over HTTPS from any Wi-Fi; it doesn't need to be on the same network as your phone or computer.">Máy kéo sách qua HTTPS từ bất kỳ WiFi nào, không cần cùng mạng với điện thoại hay máy tính.</p>
 </aside>
 
 <!-- Tài khoản -->
 <aside class="sheet" id="accountSheet" hidden role="dialog" aria-modal="true" aria-labelledby="accountTitle">
-  <div class="sheet-head"><h3 id="accountTitle">Tài khoản</h3><button class="btn ghost" data-close type="button" aria-label="Đóng">✕</button></div>
+  <div class="sheet-head"><h3 id="accountTitle" data-en="Account">Tài khoản</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
   <p class="muted small" id="accountInfo"></p>
-  <button class="btn" id="logoutBtn" type="button">Đăng xuất</button>
+  <button class="btn" id="logoutBtn" type="button" data-en="Sign out">Đăng xuất</button>
 
   <div id="googleSection" hidden>
     <h4>Google</h4>
     <p class="muted small" id="googleState"></p>
     <form id="linkForm" class="auth-form" novalidate hidden>
       <input type="text" name="username" autocomplete="username" id="linkUser" hidden>
-      <input id="linkPass" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại để xác nhận">
-      <button class="btn google" type="submit"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Liên kết Google</span></button>
+      <input id="linkPass" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại để xác nhận" data-en-placeholder="Current password to confirm">
+      <button class="btn google" type="submit"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span data-en="Link Google">Liên kết Google</span></button>
     </form>
-    <button class="btn" id="unlinkBtn" type="button" hidden>Gỡ liên kết Google</button>
+    <button class="btn" id="unlinkBtn" type="button" hidden data-en="Unlink Google">Gỡ liên kết Google</button>
   </div>
 
   <div id="tokenSection">
-    <h4>Mã cho ứng dụng</h4>
-    <p class="muted small">Dán vào plugin Obsidian <b>Xteink Sync</b> để gửi note thẳng lên kệ này từ bất cứ đâu, không cần cùng WiFi với máy. Mã chỉ xem, gửi, xóa được sách; không đổi được mật khẩu hay tài khoản. Đổi mật khẩu thì mọi mã bị thu hồi.</p>
+    <h4 data-en="App tokens">Mã cho ứng dụng</h4>
+    <p class="muted small" data-en-html="Paste one into the <b>Xteink Sync</b> Obsidian plugin to send notes straight to this shelf from anywhere, without being on the same Wi-Fi as the reader. A token can only list, add and delete books; it can't change your password or account. Changing your password revokes all tokens.">Dán vào plugin Obsidian <b>Xteink Sync</b> để gửi note thẳng lên kệ này từ bất cứ đâu, không cần cùng WiFi với máy. Mã chỉ xem, gửi, xóa được sách; không đổi được mật khẩu hay tài khoản. Đổi mật khẩu thì mọi mã bị thu hồi.</p>
     <ul id="tokenList" class="token-list"></ul>
     <div id="tokenNew" class="token-new" hidden>
-      <div class="kv"><span>Mã</span><code id="tokenValue" class="key fresh"></code><button class="btn tiny" data-copy="tokenValue" type="button">Copy</button></div>
-      <p class="muted small">Chỉ hiện một lần: copy dán vào plugin ngay.</p>
+      <div class="kv"><span data-en="Token">Mã</span><code id="tokenValue" class="key fresh"></code><button class="btn tiny" data-copy="tokenValue" type="button">Copy</button></div>
+      <p class="muted small" data-en="Shown only once: copy it into the plugin now.">Chỉ hiện một lần: copy dán vào plugin ngay.</p>
     </div>
     <form id="tokenForm" class="auth-form" novalidate>
       <input type="text" name="username" autocomplete="username" id="tokenUser" hidden>
-      <input id="tokenName" class="input" maxlength="40" placeholder="Tên mã, vd: Obsidian máy nhà">
-      <input id="tokenPass" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại để xác nhận">
-      <button class="btn" type="submit">Tạo mã</button>
+      <input id="tokenName" class="input" maxlength="40" placeholder="Tên mã, vd: Obsidian máy nhà" data-en-placeholder="Token name, e.g. Obsidian at home">
+      <input id="tokenPass" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại để xác nhận" data-en-placeholder="Current password to confirm">
+      <button class="btn" type="submit" data-en="Create token">Tạo mã</button>
     </form>
   </div>
 
   <div id="pwSection">
-  <h4>Đổi mật khẩu</h4>
+  <h4 data-en="Change password">Đổi mật khẩu</h4>
   <form id="pwForm" class="auth-form" novalidate>
     <input type="text" name="username" autocomplete="username" id="pwUser" hidden>
-    <input id="pwCurrent" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" required>
-    <input id="pwNext" class="input" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (tối thiểu 8 ký tự)" required minlength="8" maxlength="128">
-    <button class="btn" type="submit">Đổi mật khẩu</button>
+    <input id="pwCurrent" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" data-en-placeholder="Current password" required>
+    <input id="pwNext" class="input" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (tối thiểu 8 ký tự)" data-en-placeholder="New password (at least 8 characters)" required minlength="8" maxlength="128">
+    <button class="btn" type="submit" data-en="Change password">Đổi mật khẩu</button>
   </form>
   </div>
 
-  <h4 class="danger-title">Xóa tài khoản</h4>
-  <p class="muted small">Xóa hết sách trên kệ và tài khoản, không lấy lại được.</p>
+  <h4 class="danger-title" data-en="Delete account">Xóa tài khoản</h4>
+  <p class="muted small" data-en="Deletes every book on your shelf and your account. This can't be undone.">Xóa hết sách trên kệ và tài khoản, không lấy lại được.</p>
   <form id="delForm" class="auth-form" novalidate>
-    <input id="delPass" class="input" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu để xác nhận" required>
-    <input id="delConfirm" class="input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Gõ tên đăng nhập để xác nhận" hidden>
-    <button class="btn danger" type="submit">Xóa vĩnh viễn</button>
+    <input id="delPass" class="input" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu để xác nhận" data-en-placeholder="Enter your password to confirm" required>
+    <input id="delConfirm" class="input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Gõ tên đăng nhập để xác nhận" data-en-placeholder="Type your username to confirm" hidden>
+    <button class="btn danger" type="submit" data-en="Delete forever">Xóa vĩnh viễn</button>
   </form>
 </aside>
 
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <script type="module" src="/convert/convert.js"></script>
+<script src="/i18n.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

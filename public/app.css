@@ -157,3 +157,6 @@ code.key.fresh { background: color-mix(in srgb, var(--accent) 16%, transparent);
 /* Nhắc cần firmware CrossPoint */
 .need-fw { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 10%, transparent); line-height: 1.5; }
 .need-fw a, .points a { color: var(--accent); }
+
+/* Nút chuyển ngôn ngữ */
+.lang-btn { margin-left: auto; margin-right: 8px; padding: 6px 10px; font-size: .8rem; letter-spacing: .04em; }

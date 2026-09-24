@@ -1,1 +1,3 @@
-SIGNUP_CODE= # mã mời để tạo tài khoản (tự đặt, ví dụ một từ bất kỳ). Bắt buộc: không đặt thì trang không cho đăng ký
+# Invite code needed to create an account on your copy. Pick any word and keep it to yourself.
+# Mã mời để tạo tài khoản trên bản của bạn: tự đặt một từ bất kỳ, giữ cho riêng mình.
+SIGNUP_CODE=

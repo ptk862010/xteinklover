@@ -21,7 +21,10 @@ function deviceOnlyPage(): Response {
 <title>Xteink Lover</title><body style="font:16px/1.6 system-ui,sans-serif;max-width:34rem;margin:3rem auto;padding:0 1rem">
 <h1>Địa chỉ này dành cho máy đọc sách</h1>
 <p>Điền địa chỉ <b>/opds</b> vào máy Xteink (Settings → System → OPDS Servers), với <b>tên đăng nhập</b> và <b>khóa OPDS</b>.
-Đừng nhập mật khẩu tài khoản ở đây.</p><p><a href="/">← Về trang Xteink Lover</a></p></body></html>`;
+Đừng nhập mật khẩu tài khoản ở đây.</p><p><a href="/">← Về trang Xteink Lover</a></p>
+<hr><h2>This address is for your e-reader</h2>
+<p>Enter the <b>/opds</b> address on your Xteink (Settings → System → OPDS Servers) with your <b>username</b> and <b>OPDS key</b>.
+Don't type your account password here.</p><p><a href="/?lang=en">← Back to Xteink Lover</a></p></body></html>`;
   return new Response(html, {
     status: 401,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },

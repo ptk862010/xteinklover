@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://app.xteinklover.workers.dev/</loc>
     <lastmod>2026-09-24</lastmod>
+    <xhtml:link rel="alternate" hreflang="vi" href="https://app.xteinklover.workers.dev/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://app.xteinklover.workers.dev/?lang=en"/>
+  </url>
+  <url>
+    <loc>https://app.xteinklover.workers.dev/?lang=en</loc>
+    <lastmod>2026-09-24</lastmod>
+    <xhtml:link rel="alternate" hreflang="vi" href="https://app.xteinklover.workers.dev/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://app.xteinklover.workers.dev/?lang=en"/>
   </url>
 </urlset>
