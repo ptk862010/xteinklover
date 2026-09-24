@@ -1,6 +1,6 @@
 # Xteink Lover
 
-"Send to Kindle" cho máy đọc sách **Xteink** chạy firmware **CrossPoint**: ném file vào trang web → thành EPUB → nằm trên **kệ OPDS riêng** → trên máy mở kệ là tải. Không cần cùng WiFi, không cần bật File Transfer.
+"Send to Kindle" cho máy đọc sách **Xteink** chạy firmware **CrossPoint**: thả file vào trang web → thành EPUB → nằm trên **kệ OPDS riêng** → trên máy mở kệ là tải. Không cần cùng WiFi, không cần bật File Transfer.
 
 Dùng ngay, miễn phí: **https://app.xteinklover.workers.dev** — tạo tài khoản là có kệ riêng.
 
