@@ -110,6 +110,7 @@
     epoch++; // việc đang chạy (gửi file, tải kệ) của phiên cũ dừng lại
     $("#authView").hidden = false;
     $("#appView").hidden = true;
+    try { localStorage.removeItem("xl_signed_in"); } catch { /* bỏ qua */ }
     $("#topActions").hidden = true;
     closeSheets();
   }
@@ -129,6 +130,7 @@
     lastUser = me.user.username;
     $("#authView").hidden = true;
     $("#appView").hidden = false;
+    try { localStorage.setItem("xl_signed_in", "1"); } catch { /* bỏ qua */ }
     $("#topActions").hidden = false;
     $("#whoami").textContent = "👤 " + me.user.username;
     $("#accountBtn").setAttribute("aria-label", "Tài khoản " + me.user.username);
@@ -722,6 +724,10 @@
   });
 
   // ── Khởi động ──
+  // Trang giới thiệu có sẵn trong HTML (cho máy tìm kiếm). Lần trước đã đăng nhập thì ẩn ngay, khỏi nháy
+  // trong lúc chờ /api/me; loadMe sẽ quyết định hiện màn nào.
+  try { if (localStorage.getItem("xl_signed_in") === "1") $("#authView").hidden = true; } catch { /* bỏ qua */ }
+
   async function boot() {
     const g = new URLSearchParams(location.search).get("google");
     if (g) history.replaceState(null, "", "/"); // bỏ ?google=… khỏi thanh địa chỉ

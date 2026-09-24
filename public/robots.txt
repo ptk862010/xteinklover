@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /books/
+Disallow: /opds
+
+Sitemap: https://app.xteinklover.workers.dev/sitemap.xml
