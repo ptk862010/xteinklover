@@ -300,6 +300,13 @@
       });
     } catch (err) {
       fail(tr(err.message));
+      if (err.status === 403 && /Đã đủ số tài khoản/.test(err.message)) {
+        // Bản chung đã đủ chỗ: chỉ sang chỗ tự dựng bản riêng (HTML cố định, không có dữ liệu người dùng)
+        $("#authHint").innerHTML = L(
+          'Bản chung đã đủ người. Bạn có thể tự dựng bản riêng miễn phí: <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener">Deploy to Cloudflare</a>.',
+          'This shared copy is full. You can run your own for free: <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener">Deploy to Cloudflare</a>.',
+        );
+      }
     } finally {
       authBusy = false;
       document.querySelectorAll("[data-auth-tab]").forEach((t) => (t.disabled = false));
@@ -640,6 +647,7 @@
     if (restore && wasOpen && lastFocus?.focus) lastFocus.focus();
   }
   $("#connectBtn").addEventListener("click", () => openSheet("connectSheet"));
+  $("#selfBtn").addEventListener("click", () => openSheet("selfSheet"));
   $("#accountBtn").addEventListener("click", () => { openSheet("accountSheet"); loadTokens(); });
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeSheets()));
   back.addEventListener("click", () => closeSheets());

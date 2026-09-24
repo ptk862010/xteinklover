@@ -34,6 +34,7 @@
 <body>
 <header class="top">
   <a class="brand" href="/" aria-label="Xteink Lover"><span class="logo" aria-hidden="true">📖</span><span class="brand-text">Xteink <b>Lover</b></span></a>
+  <button class="btn ghost self-btn" id="selfBtn" type="button" aria-label="Tự dựng bản riêng" data-en-aria-label="Run your own copy"><span aria-hidden="true">☁</span><span class="self-label" data-en="Self-host">Tự dựng</span></button>
   <button class="btn ghost lang-btn" id="langBtn" type="button" aria-label="Switch to English" data-en="VI" data-en-aria-label="Chuyển sang tiếng Việt">EN</button>
   <div class="top-actions" id="topActions" hidden>
     <span class="count" id="count"></span>
@@ -161,6 +162,15 @@
   </div>
 </main>
 
+<footer class="foot">
+  <p class="muted small" data-en="Want your own private copy? Run it on your free Cloudflare account in a few clicks, and your books never leave it.">Muốn một bản riêng? Chạy trên tài khoản Cloudflare miễn phí của bạn, vài cú bấm là xong, sách không đi đâu khác.</p>
+  <div class="foot-actions">
+    <a class="btn deploy-btn" href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener"><span aria-hidden="true">☁</span> Deploy to Cloudflare</a>
+    <a class="btn ghost" href="https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener" data-en="Source code on GitHub">Mã nguồn trên GitHub</a>
+  </div>
+  <p class="muted small" data-en-html="Free, open source (MIT). Obsidian users: try the <b>Xteink Sync</b> plugin.">Miễn phí, mã nguồn mở (MIT). Dùng Obsidian thì thử plugin <b>Xteink Sync</b>.</p>
+</footer>
+
 <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
 
 <!-- Nối máy -->
@@ -179,6 +189,24 @@
     <li data-en-html="Open the shelf on the reader (<b>Settings → OPDS</b>) → new books are at the top → tap to download.">Mở kệ trên máy (<b>Settings → OPDS</b>) → sách mới nằm trên cùng → bấm tải.</li>
   </ol>
   <p class="muted small" data-en="The reader downloads books over HTTPS from any Wi-Fi; it doesn't need to be on the same network as your phone or computer.">Máy kéo sách qua HTTPS từ bất kỳ WiFi nào, không cần cùng mạng với điện thoại hay máy tính.</p>
+</aside>
+
+<!-- Tự dựng bản riêng -->
+<aside class="sheet" id="selfSheet" hidden role="dialog" aria-modal="true" aria-labelledby="selfTitle">
+  <div class="sheet-head"><h3 id="selfTitle" data-en="Run your own copy on Cloudflare">Tự dựng bản riêng trên Cloudflare</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
+  <p class="muted small" data-en="This shared copy has limited space. For a fully private shelf, where your books stay in your own account, run your own copy. It's free and needs no card.">Bản chung này có giới hạn chỗ. Muốn kệ riêng hoàn toàn, sách chỉ nằm trong tài khoản của bạn, thì dựng một bản cho mình: miễn phí, không cần thẻ.</p>
+  <ol class="steps">
+    <li data-en-html="You need a <b>GitHub</b> account and a <b>Cloudflare</b> account (both free; you can create the Cloudflare one in the next step).">Cần tài khoản <b>GitHub</b> và tài khoản <b>Cloudflare</b> (đều miễn phí; Cloudflare tạo luôn ở bước sau cũng được).</li>
+    <li data-en-html="Tap <b>Deploy to Cloudflare</b> below → sign in to Cloudflare → connect GitHub. Cloudflare copies the code into a new repository in your GitHub and builds it.">Bấm <b>Deploy to Cloudflare</b> bên dưới → đăng nhập Cloudflare → kết nối GitHub. Cloudflare chép mã nguồn sang một repo mới trong GitHub của bạn rồi tự build.</li>
+    <li data-en-html="In the <b>SIGNUP_CODE</b> box, type an invite code of your choice and keep it to yourself. Without it nobody can sign up, so strangers can't take your copy first.">Ô <b>SIGNUP_CODE</b>: đặt một mã mời bất kỳ, giữ cho riêng mình. Không có mã thì không ai đăng ký được, người lạ không chiếm được bản của bạn.</li>
+    <li data-en-html="Press <b>Deploy</b> and wait a minute or two. You get an address like <code>https://xteinklover.&lt;your-name&gt;.workers.dev</code>.">Bấm <b>Deploy</b>, đợi một hai phút. Xong sẽ có địa chỉ dạng <code>https://xteinklover.&lt;tên-bạn&gt;.workers.dev</code>.</li>
+    <li data-en-html="Open that address → <b>Create account</b> → enter your invite code. Then connect your reader under <b>⚡ Connect</b> as usual. By default only one account is allowed (<code>MAX_USERS = 1</code>); raise it in <code>wrangler.toml</code> to share with family.">Mở địa chỉ đó → <b>Tạo tài khoản</b> → nhập mã mời. Rồi nối máy ở <b>⚡ Nối máy</b> như bình thường. Mặc định chỉ 1 tài khoản (<code>MAX_USERS = 1</code>); muốn cho người nhà dùng thì tăng số này trong <code>wrangler.toml</code>.</li>
+  </ol>
+  <div class="foot-actions">
+    <a class="btn deploy-btn" href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener"><span aria-hidden="true">☁</span> Deploy to Cloudflare</a>
+    <a class="btn ghost" href="https://github.com/ptk862010/xteinklover#english" target="_blank" rel="noopener" data-en="Full guide on GitHub">Hướng dẫn đầy đủ trên GitHub</a>
+  </div>
+  <p class="muted small" data-en="Free plan limits for your copy: 100,000 requests and 1,000 uploads a day, 1 GB of books. Plenty for one household.">Giới hạn gói miễn phí cho bản của bạn: 100.000 lượt truy cập và 1.000 lượt gửi sách mỗi ngày, 1 GB sách. Thừa cho một gia đình.</p>
 </aside>
 
 <!-- Tài khoản -->
