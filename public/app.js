@@ -651,6 +651,7 @@
   }
   $("#connectBtn").addEventListener("click", () => openSheet("connectSheet"));
   $("#selfBtn").addEventListener("click", () => openSheet("selfSheet"));
+  $("#demoSelf").addEventListener("click", () => openSheet("selfSheet"));
   $("#accountBtn").addEventListener("click", () => { openSheet("accountSheet"); loadTokens(); });
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeSheets()));
   back.addEventListener("click", () => closeSheets());
@@ -770,6 +771,7 @@
     $("#googleBox").hidden = !cfg.google;
     // Nút "Tự dựng" / Deploy chỉ có ở bản chung của tác giả (SHOW_SELF_HOST); bản tự dựng chỉ giữ dòng ghi công
     $("#selfBtn").hidden = !cfg.selfHost;
+    $("#demoBar").hidden = !cfg.selfHost;
     $("#footSelfHost").hidden = !cfg.selfHost;
     $("#footCredit").hidden = !!cfg.selfHost;
     setAuthMode("login");

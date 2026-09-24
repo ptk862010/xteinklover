@@ -43,6 +43,11 @@
   </div>
 </header>
 
+<div class="demo-bar" id="demoBar" hidden>
+  <span data-en-html="<b>This is a demo</b> with limited space for trying things out. Your own copy on Cloudflare is free, with 1 GB for books, and takes a few minutes.">Đây là <b>bản dùng thử</b>, có giới hạn chỗ. Bản riêng của bạn trên Cloudflare miễn phí, 1 GB lưu sách, dựng vài phút là xong.</span>
+  <button class="demo-link" id="demoSelf" type="button" data-en="☁ Run your own">☁ Tự dựng bản riêng</button>
+</div>
+
 <main>
   <!-- ── Chưa đăng nhập ── -->
   <section id="authView">
@@ -197,7 +202,7 @@
 <!-- Tự dựng bản riêng -->
 <aside class="sheet" id="selfSheet" hidden role="dialog" aria-modal="true" aria-labelledby="selfTitle">
   <div class="sheet-head"><h3 id="selfTitle" data-en="Run your own copy on Cloudflare">Tự dựng bản riêng trên Cloudflare</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
-  <p class="muted small" data-en="This shared copy has limited space. For a fully private shelf, where your books stay in your own account, run your own copy. It's free and needs no card.">Bản chung này có giới hạn chỗ. Muốn kệ riêng hoàn toàn, sách chỉ nằm trong tài khoản của bạn, thì dựng một bản cho mình: miễn phí, không cần thẻ.</p>
+  <p class="muted small" data-en="This site is a demo with limited space. For your own shelf, with books kept only in your account, run your own copy: free, no card, and Cloudflare's free plan gives you 1 GB for books.">Trang này là bản dùng thử, có giới hạn chỗ. Muốn kệ riêng, sách chỉ nằm trong tài khoản của bạn, thì dựng một bản cho mình: miễn phí, không cần thẻ, gói miễn phí của Cloudflare cho 1 GB lưu sách.</p>
   <ol class="steps">
     <li data-en-html="You need a <b>GitHub</b> account and a <b>Cloudflare</b> account (both free; you can create the Cloudflare one in the next step).">Cần tài khoản <b>GitHub</b> và tài khoản <b>Cloudflare</b> (đều miễn phí; Cloudflare tạo luôn ở bước sau cũng được).</li>
     <li data-en-html="Tap <b>Deploy to Cloudflare</b> below → sign in to Cloudflare → connect GitHub. Cloudflare copies the code into a new repository in your GitHub and builds it.">Bấm <b>Deploy to Cloudflare</b> bên dưới → đăng nhập Cloudflare → kết nối GitHub. Cloudflare chép mã nguồn sang một repo mới trong GitHub của bạn rồi tự build.</li>
