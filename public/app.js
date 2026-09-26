@@ -175,6 +175,9 @@
     $("#unlinkBtn").hidden = !(u.google && u.hasPassword);
     $("#tokenPass").hidden = !u.hasPassword;
     $("#tokenUser").value = u.username;
+    $("#syncPass").hidden = !u.hasPassword;
+    $("#syncUserHidden").value = u.username;
+    $("#syncUser").textContent = u.username;
   }
 
   // ── Mã cho ứng dụng (plugin Obsidian) ──
@@ -222,6 +225,75 @@
     btn.dataset.armed = ""; btn.textContent = L("Thu hồi", "Revoke");
     await busy(btn, L("Đang thu hồi…", "Revoking…"), async () => {
       try { await api("/api/tokens/" + encodeURIComponent(btn.dataset.revoke), { method: "DELETE" }); toast(L("Đã thu hồi mã, app dùng mã đó hết gửi được", "Token revoked. Apps using it can no longer send")); loadTokens(); }
+      catch (err) { toast(tr(err.message), true); }
+    });
+  });
+
+  // ── Đồng bộ tiến độ đọc (KOSync: KOReader, CrossPoint) ──
+  const groupCode = (c) => c.replace(/(\d{4})(?=\d)/g, "$1 ");
+  async function loadSync() {
+    const my = epoch;
+    try {
+      const r = await api("/api/sync-keys");
+      if (my !== epoch) return;
+      $("#syncKeyList").innerHTML = r.keys.map((k) => `<li><div><b>${esc(k.name)}</b><span class="muted small">${L("tạo ", "created ")}${esc(fmtDate(new Date(k.created).toISOString()))} · ${k.lastUsed ? L("đồng bộ lần cuối ", "last synced ") + esc(fmtDate(new Date(k.lastUsed).toISOString())) : L("chưa dùng", "never used")}</span></div><button class="btn tiny danger" data-revoke-sync="${esc(k.id)}" type="button">${L("Thu hồi", "Revoke")}</button></li>`).join("");
+      $("#syncDocs").textContent = L(`Đã đồng bộ ${r.docs} cuốn.`, `${r.docs} book(s) synced.`);
+      $("#syncClear").hidden = !r.docs;
+    } catch { /* bỏ qua: không ảnh hưởng phần còn lại */ }
+  }
+
+  $("#syncForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.submitter || $("#syncForm button");
+    const name = $("#syncName").value.trim() || L("Máy đọc", "Reader");
+    await busy(btn, L("Đang tạo…", "Creating…"), async () => {
+      try {
+        const body = { name };
+        if (me.user.hasPassword) {
+          const pw = $("#syncPass").value;
+          if (!pw) throw new Error(L("Nhập mật khẩu hiện tại để xác nhận", "Enter your current password to confirm"));
+          body.proof = await passwordProof(me.user.username, pw);
+        }
+        const r = await api("/api/sync-keys", { json: body });
+        $("#syncPass").value = ""; $("#syncName").value = "";
+        $("#syncCode").textContent = groupCode(r.code);
+        $("#syncCode").dataset.raw = r.code;
+        $("#syncNew").hidden = false;
+        toast(L("Đã tạo mã đồng bộ. Gõ vào ô Password trên máy đọc ngay nhé", "Sync code created. Type it as the Password on your reader now"));
+        loadSync();
+      } catch (err) {
+        if (err.data?.reauth) {
+          try { sessionStorage.setItem("xl_reauth", "sync"); } catch { /* bỏ qua */ }
+          toast(L("Xác nhận lại bằng Google trước khi tạo mã…", "Confirm with Google again before creating a code…"));
+          try { await googleGo("login"); } catch (e2) { toast(tr(e2.message), true); }
+        } else toast(tr(err.message), true);
+      }
+    });
+  });
+
+  // Chép chỉ 20 chữ số (không dấu cách): dán trên Android không dính khoảng trắng lạ
+  $("#syncCopy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("#syncCode").dataset.raw || ""); toast(L("Đã copy", "Copied")); } catch { toast(L("Không copy được, chọn tay nhé", "Couldn't copy, please select it manually"), true); }
+  });
+
+  $("#syncKeyList").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-revoke-sync]");
+    if (!btn || btn.dataset.busy) return;
+    if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = L("Chắc chứ?", "Sure?"); setTimeout(() => { btn.dataset.armed = ""; if (!btn.dataset.busy) btn.textContent = L("Thu hồi", "Revoke"); }, 2500); return; }
+    btn.dataset.armed = ""; btn.textContent = L("Thu hồi", "Revoke");
+    await busy(btn, L("Đang thu hồi…", "Revoking…"), async () => {
+      try { await api("/api/sync-keys/" + encodeURIComponent(btn.dataset.revokeSync), { method: "DELETE" }); toast(L("Đã thu hồi mã, máy dùng mã đó hết đồng bộ được", "Code revoked. The reader using it can no longer sync")); loadSync(); }
+      catch (err) { toast(tr(err.message), true); }
+    });
+  });
+
+  $("#syncClear").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    if (btn.dataset.busy) return;
+    if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = L("Xóa hết tiến độ? Bấm lần nữa", "Clear all progress? Tap again"); setTimeout(() => { btn.dataset.armed = ""; if (!btn.dataset.busy) btn.textContent = L("Xóa dữ liệu đồng bộ", "Clear sync data"); }, 4000); return; }
+    btn.dataset.armed = ""; btn.textContent = L("Xóa dữ liệu đồng bộ", "Clear sync data");
+    await busy(btn, L("Đang xóa…", "Clearing…"), async () => {
+      try { await api("/api/sync-progress", { method: "DELETE" }); toast(L("Đã xóa tiến độ đồng bộ", "Sync progress cleared")); loadSync(); }
       catch (err) { toast(tr(err.message), true); }
     });
   });
@@ -649,7 +721,7 @@
     back.hidden = true;
     if (restore && wasOpen && lastFocus?.focus) lastFocus.focus();
   }
-  $("#connectBtn").addEventListener("click", () => openSheet("connectSheet"));
+  $("#connectBtn").addEventListener("click", () => { openSheet("connectSheet"); loadSync(); });
   $("#selfBtn").addEventListener("click", () => openSheet("selfSheet"));
   $("#demoSelf").addEventListener("click", () => openSheet("selfSheet"));
   $("#accountBtn").addEventListener("click", () => { openSheet("accountSheet"); loadTokens(); });
@@ -657,6 +729,7 @@
   back.addEventListener("click", () => closeSheets());
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheets(); });
   $("#opdsUrl").textContent = location.origin + "/opds";
+  $("#syncServer").textContent = location.origin;
 
   function showKey(key) {
     $("#opdsKey").textContent = key;
@@ -712,11 +785,12 @@
     await busy(btn, L("Đang mã hóa…", "Encrypting…"), async () => {
       try {
         const [cur, nxt] = await Promise.all([passwordProof(u, current), passwordProof(u, next)]);
-        await api("/api/password", { json: { current: cur, next: nxt } });
-        $("#pwCurrent").value = ""; $("#pwNext").value = "";
+        const keepSyncKeys = $("#pwKeepSync").checked;
+        await api("/api/password", { json: { current: cur, next: nxt, keepSyncKeys } });
+        $("#pwCurrent").value = ""; $("#pwNext").value = ""; $("#pwKeepSync").checked = false;
         toast(L(
-          "Đã đổi mật khẩu: các nơi khác bị đăng xuất, mã ứng dụng bị thu hồi (tạo mã mới cho plugin). Nếu nghi bị lộ, bấm “Tạo khóa mới” ở ⚡ Nối máy.",
-          "Password changed: other sessions were logged out and app tokens revoked (create a new one for the plugin). If you suspect a leak, tap “New key” under ⚡ Connect reader.",
+          "Đã đổi mật khẩu: các nơi khác bị đăng xuất, mã ứng dụng bị thu hồi (tạo mã mới cho plugin)" + (keepSyncKeys ? "" : ", mã đồng bộ của máy đọc cũng bị thu hồi") + ". Nếu nghi bị lộ, bấm “Tạo khóa mới” ở ⚡ Nối máy.",
+          "Password changed: other sessions were logged out and app tokens revoked (create a new one for the plugin)" + (keepSyncKeys ? "" : ", and your readers' sync codes too") + ". If you suspect a leak, tap “New key” under ⚡ Connect reader.",
         ));
         loadTokens();
       } catch (err) { toast(tr(err.message), true); }
@@ -787,6 +861,11 @@
       loadTokens();
       $("#tokenForm").scrollIntoView({ block: "center" });
       toast(L("Đã xác nhận bằng Google. Bấm “Tạo mã” lần nữa trong 10 phút.", "Confirmed with Google. Tap “Create token” again within 10 minutes."));
+    } else if (me && g === "ok" && reauth === "sync") {
+      openSheet("connectSheet");
+      loadSync();
+      $("#syncForm").scrollIntoView({ block: "center" });
+      toast(L("Đã xác nhận bằng Google. Bấm “Tạo mã đồng bộ” lần nữa trong 10 phút.", "Confirmed with Google. Tap “Create sync code” again within 10 minutes."));
     } else if (me && g === "ok" && reauth === "delete") {
       openSheet("accountSheet");
       $("#delConfirm").value = me.user.username;

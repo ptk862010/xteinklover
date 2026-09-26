@@ -2,6 +2,7 @@ import * as accounts from "./accounts";
 import { unauthorized, userFromBasic, userFromSession } from "./auth";
 import * as books from "./books";
 import * as clip from "./clip";
+import * as kosync from "./kosync";
 import * as oauth from "./oauth";
 import * as tokens from "./tokens";
 import { ensureSchema } from "./db";
@@ -43,15 +44,24 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   const isApi = path.startsWith("/api/");
   const isDevice = path === "/opds" || path === "/opds/catalog" || path.startsWith("/books/");
   const isOauth = path === "/auth/google/callback";
+  // Đồng bộ tiến độ (KOSync): máy đọc gọi /users/*, /syncs/* bằng header x-auth-*, không cookie, không Origin
+  const isSync = kosync.isSyncPath(path);
   // Trang tĩnh (index.html, app.js, css) công khai; dữ liệu nằm sau API
-  if (!isApi && !isDevice && !isOauth) {
+  if (!isApi && !isDevice && !isOauth && !isSync) {
     if (method === "GET" || method === "HEAD") return env.ASSETS.fetch(req);
     return error(405, "Không hỗ trợ");
   }
 
   if (path === "/api/config" && method === "GET") return oauth.config(env);
+  if (isSync) {
+    const early = kosync.kosyncEarly(path, method, url);
+    if (early) return early;
+  }
 
   await ensureSchema(env.DB);
+
+  // ── Máy đọc đồng bộ tiến độ: trước nhánh Bearer và trước chặn CSRF (máy không gửi Origin); tự bắt hết đường lạ ──
+  if (isSync) return kosync.kosync(req, env, ctx, path, method);
 
   // ── Google chuyển về sau khi đăng nhập ──
   if (isOauth) return method === "GET" ? oauth.callback(req, env, url) : error(405, "Không hỗ trợ");
@@ -107,6 +117,13 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   }
   const tok = path.match(/^\/api\/tokens\/([0-9a-f]{16})$/);
   if (tok && method === "DELETE") return tokens.revoke(env, auth, tok[1]);
+  if (path === "/api/sync-keys") {
+    if (method === "GET") return kosync.listKeys(env, auth);
+    if (method === "POST") return kosync.createKey(req, env, auth, url);
+  }
+  const sk = path.match(/^\/api\/sync-keys\/([0-9a-f]{16})$/);
+  if (sk && method === "DELETE") return kosync.revokeKey(env, auth, sk[1]);
+  if (path === "/api/sync-progress" && method === "DELETE") return kosync.clearProgress(env, auth);
   if (path === "/api/password" && method === "POST") return accounts.changePassword(req, env, auth);
   if (path === "/api/opds-key" && method === "POST") return accounts.rotateOpdsKey(env, auth.user);
   if (path === "/api/google/unlink" && method === "POST") return oauth.unlink(env, auth);
@@ -130,9 +147,15 @@ export default {
     try {
       return await route(req, env, ctx);
     } catch (e) {
-      console.error("xteinklover error", req.method, new URL(req.url).pathname, e instanceof Error ? e.stack : e);
+      const path = new URL(req.url).pathname;
+      console.error("xteinklover error", req.method, path, e instanceof Error ? e.stack : e);
+      const quota = /free tier|daily .*limit|limit exceeded|KV .*limit/i.test(String(e));
+      // Máy đọc (KOSync) cần {code, message}; tuyệt đối không 401 (KOReader sẽ vứt tiến độ)
+      if (kosync.isSyncPath(path.replace(/\/+$/, "") || "/")) {
+        return kosync.kerr(quota ? 503 : 500, kosync.KOSYNC_ERR.SERVER, quota ? "Server quota exhausted, try again later" : "Unknown server error.");
+      }
       // Hết quota free trong ngày (D1/KV) — báo rõ thay vì "lỗi máy chủ"
-      if (/free tier|daily .*limit|limit exceeded|KV .*limit/i.test(String(e))) {
+      if (quota) {
         return error(503, "Hệ thống đã dùng hết lượt miễn phí hôm nay, thử lại sau 7 giờ sáng");
       }
       return error(500, "Lỗi máy chủ, thử lại sau");

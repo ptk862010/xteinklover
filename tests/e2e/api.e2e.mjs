@@ -580,6 +580,90 @@ test("dán link: tải ảnh trong bài; không nhận SVG", async () => {
   assert.equal((await client().req("/api/fetch-image?url=" + encodeURIComponent(SITE + "/anh.png"))).status, 401);
 });
 
+// ── Đồng bộ tiến độ (KOSync): máy đọc gọi /users/*, /syncs/* bằng x-auth-user + x-auth-key = md5(mã gõ vào) ──
+const md5 = (s) => createHash("md5").update(s, "utf8").digest("hex");
+const ko = (user, code) => ({ "x-auth-user": user, "x-auth-key": md5(code), Accept: "application/vnd.koreader.v1+json" });
+const DOC = "59d481d168cca6267322f150c5f6a2a3";
+
+test("đồng bộ: tạo mã trên web (cần mật khẩu, tối đa 5), máy đăng nhập + đẩy/kéo không cần Origin/cookie", async () => {
+  const c = client();
+  const name = "sync" + Date.now().toString(36).slice(-4);
+  assert.equal((await c.req("/api/signup", { method: "POST", json: { username: name, proof: await proof(name, "matkhau-dai-1") }, headers: { "CF-Connecting-IP": "203.0.113.70" } })).status, 201);
+  const pf = await proof(name, "matkhau-dai-1");
+  assert.equal((await c.req("/api/sync-keys", { method: "POST", json: { name: "Kindle" } })).status, 400, "thiếu mật khẩu");
+  const made = await c.req("/api/sync-keys", { method: "POST", json: { name: "Kindle", proof: pf } });
+  assert.equal(made.status, 201, JSON.stringify(made.data));
+  assert.match(made.data.code, /^[0-9]{20}$/);
+  assert.equal(made.data.username, name);
+  assert.equal(made.data.server, BASE);
+  const list = await c.req("/api/sync-keys");
+  assert.equal(list.data.keys.length, 1);
+  assert.equal(list.data.keys[0].code, undefined, "danh sách không lộ mã");
+  assert.equal(list.data.docs, 0);
+  for (let i = 0; i < 4; i++) assert.equal((await c.req("/api/sync-keys", { method: "POST", json: { name: "m" + i, proof: pf } })).status, 201);
+  assert.equal((await c.req("/api/sync-keys", { method: "POST", json: { name: "thu6", proof: pf } })).status, 409);
+
+  const K = ko(name, made.data.code);
+  // Máy đọc: không cookie, không Origin
+  assert.deepEqual(await fetch(BASE + "/users/auth", { headers: K }).then((r) => r.json()), { authorized: "OK" });
+  const grouped = made.data.code.match(/.{4}/g).join(" ");
+  assert.equal((await fetch(BASE + "/users/auth", { headers: ko(name.toUpperCase(), grouped) })).status, 200, "gõ nhóm có dấu cách, tên viết hoa");
+  assert.deepEqual(await fetch(BASE + "/syncs/progress/" + DOC, { headers: K }).then((r) => r.json()), {});
+  const put = await fetch(BASE + "/syncs/progress", {
+    method: "PUT",
+    headers: { ...K, "Content-Type": "application/json" },
+    body: JSON.stringify({ document: DOC, progress: "/body/DocFragment[3]/body/p[4]/text().1", percentage: 0.25, device: "Kindle", device_id: "ABC" }),
+  });
+  assert.equal(put.status, 200);
+  const ts = (await put.json()).timestamp;
+  const got = await fetch(BASE + "/syncs/progress/" + DOC, { headers: K }).then((r) => r.json());
+  assert.deepEqual(got, { document: DOC, percentage: 0.25, progress: "/body/DocFragment[3]/body/p[4]/text().1", device: "Kindle", device_id: "ABC", timestamp: ts });
+  assert.equal((await c.req("/api/sync-keys")).data.docs, 1);
+
+  // Sai mã → 401 JSON; đăng ký từ máy đọc → 402; healthcheck; đường lạ → 404 JSON (không rơi xuống nhánh web)
+  const bad = await fetch(BASE + "/users/auth", { headers: ko(name, "00000000000000000000") });
+  assert.equal(bad.status, 401);
+  assert.equal((await bad.json()).code, 2001);
+  const reg = await fetch(BASE + "/users/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: "x", password: md5("x") }) });
+  assert.equal(reg.status, 402);
+  assert.equal((await reg.json()).code, 2005);
+  assert.deepEqual(await fetch(BASE + "/healthcheck").then((r) => r.json()), { state: "OK" });
+  const odd = await fetch(BASE + "/users/me", { method: "DELETE", headers: K });
+  assert.equal(odd.status, 404);
+  assert.equal((await odd.json()).code, 2008);
+
+  // Cookie phiên KHÔNG dùng được ở /syncs; mã đồng bộ KHÔNG dùng được cho OPDS hay /api
+  assert.equal((await fetch(BASE + "/syncs/progress/" + DOC, { headers: { Cookie: c.cookie } })).status, 401);
+  assert.equal((await fetch(BASE + "/opds", { headers: basic(name, made.data.code) })).status, 401);
+  assert.equal((await fetch(BASE + "/api/me", { headers: basic(name, made.data.code) })).status, 401);
+
+  // Thu hồi mã → máy đó 401; xóa dữ liệu đồng bộ → về 0
+  assert.equal((await c.req("/api/sync-keys/" + made.data.id, { method: "DELETE" })).status, 200);
+  assert.equal((await fetch(BASE + "/users/auth", { headers: K })).status, 401);
+  assert.equal((await c.req("/api/sync-progress", { method: "DELETE" })).status, 200);
+  assert.equal((await c.req("/api/sync-keys")).data.docs, 0);
+  // Khác origin → chặn CSRF như mọi API web
+  assert.equal((await c.req("/api/sync-keys", { method: "POST", json: { name: "x", proof: pf }, origin: "https://evil.example" })).status, 403);
+});
+
+test("đồng bộ: đổi mật khẩu thu hồi mã (trừ khi chọn giữ); xóa tài khoản thì mã chết", async () => {
+  const c = client();
+  const name = "syncpw" + Date.now().toString(36).slice(-4);
+  assert.equal((await c.req("/api/signup", { method: "POST", json: { username: name, proof: await proof(name, "matkhau-dai-1") }, headers: { "CF-Connecting-IP": "203.0.113.71" } })).status, 201);
+  const pf = await proof(name, "matkhau-dai-1");
+  const code1 = (await c.req("/api/sync-keys", { method: "POST", json: { name: "Kindle", proof: pf } })).data.code;
+  const pf2 = await proof(name, "matkhau-moi-2");
+  assert.equal((await c.req("/api/password", { method: "POST", json: { current: pf, next: pf2, keepSyncKeys: true } })).status, 200);
+  assert.equal((await fetch(BASE + "/users/auth", { headers: ko(name, code1) })).status, 200, "chọn giữ mã");
+  const pf3 = await proof(name, "matkhau-moi-3");
+  assert.equal((await c.req("/api/password", { method: "POST", json: { current: pf2, next: pf3 } })).status, 200);
+  assert.equal((await fetch(BASE + "/users/auth", { headers: ko(name, code1) })).status, 401, "mặc định thu hồi");
+  const code2 = (await c.req("/api/sync-keys", { method: "POST", json: { name: "Xteink", proof: pf3 } })).data.code;
+  assert.equal((await fetch(BASE + "/users/auth", { headers: ko(name, code2) })).status, 200);
+  assert.equal((await c.req("/api/account", { method: "DELETE", json: { proof: pf3 } })).status, 200);
+  assert.equal((await fetch(BASE + "/users/auth", { headers: ko(name, code2) })).status, 401);
+});
+
 test("route lạ và method sai", async () => {
   assert.equal((await A.req("/api/khongco")).status, 401);
   assert.equal((await B.req("/api/khongco")).status, 404);

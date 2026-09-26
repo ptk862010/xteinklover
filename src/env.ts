@@ -28,6 +28,14 @@ export interface Env {
   SHOW_SELF_HOST?: string;
   /** Chỉ dùng cho test tích hợp: cho "Dán link" lấy trang từ 127.0.0.1 / localhost. */
   FETCH_ALLOW_LOCAL?: string;
+  /** Đồng bộ tiến độ: số sách tối đa mỗi người (vượt thì đẩy ra sách lâu nhất không đụng tới). */
+  MAX_SYNC_DOCS?: string;
+  /** Đồng bộ tiến độ: số sách MỚI tối đa mỗi người mỗi ngày (chặn tài khoản rác đốt quota D1). */
+  MAX_SYNC_NEW_PER_DAY?: string;
+  /** Đồng bộ tiến độ: số lượt ghi tối đa mỗi người mỗi ngày (một máy lỗi / người phá không đốt hết quota D1). */
+  MAX_SYNC_WRITES_PER_DAY?: string;
+  /** Đồng bộ tiến độ: số lượt ghi tối đa cả hệ thống mỗi ngày (D1 free: 100.000 dòng ghi/ngày, dùng chung). */
+  MAX_SYNC_WRITES_PER_DAY_TOTAL?: string;
 }
 
 export interface Limits {
@@ -39,6 +47,10 @@ export interface Limits {
   maxStorageTotal: number;
   maxUploadsPerDay: number;
   maxUploadsPerDayTotal: number;
+  maxSyncDocs: number;
+  maxSyncNewPerDay: number;
+  maxSyncWritesPerDay: number;
+  maxSyncWritesPerDayTotal: number;
 }
 
 function num(v: string | undefined, fallback: number): number {
@@ -63,5 +75,9 @@ export function limits(env: Env): Limits {
     maxStorageTotal: num(env.MAX_STORAGE_MB_TOTAL, 900) * MB,
     maxUploadsPerDay: num(env.MAX_UPLOADS_PER_DAY, 50),
     maxUploadsPerDayTotal: num(env.MAX_UPLOADS_PER_DAY_TOTAL, 900),
+    maxSyncDocs: Math.max(num(env.MAX_SYNC_DOCS, 1000), 1),
+    maxSyncNewPerDay: num(env.MAX_SYNC_NEW_PER_DAY, 300),
+    maxSyncWritesPerDay: num(env.MAX_SYNC_WRITES_PER_DAY, 2000),
+    maxSyncWritesPerDayTotal: num(env.MAX_SYNC_WRITES_PER_DAY_TOTAL, 15000),
   };
 }

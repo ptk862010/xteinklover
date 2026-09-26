@@ -106,4 +106,44 @@ export const MIGRATIONS: string[][] = [
     )`,
     `CREATE INDEX IF NOT EXISTS app_tokens_user ON app_tokens(user_id)`,
   ],
+  // v4 — đồng bộ tiến độ đọc (giao thức KOSync của KOReader, CrossPoint cũng dùng).
+  // Mã đồng bộ: mỗi máy một mã 20 chữ số; máy gửi md5(mã gõ vào) nên lưu 3 bộ xác minh cho 3 cách gõ, có salt riêng.
+  // Tiến độ: một dòng mỗi (người, sách), ghi đè sau cùng thắng; số sách đếm bằng trigger để khỏi COUNT(*).
+  [
+    `CREATE TABLE IF NOT EXISTS sync_keys (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      v_plain TEXT NOT NULL,
+      v_space TEXT NOT NULL,
+      v_dash TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      last_used INTEGER NOT NULL DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS sync_keys_user ON sync_keys(user_id)`,
+    // updated_at tính bằng GIÂY (trả thẳng làm timestamp của KOSync)
+    `CREATE TABLE IF NOT EXISTS sync_progress (
+      user_id TEXT NOT NULL,
+      document TEXT NOT NULL,
+      progress TEXT NOT NULL,
+      percentage REAL NOT NULL,
+      device TEXT NOT NULL,
+      device_id TEXT,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, document)
+    )`,
+    `CREATE INDEX IF NOT EXISTS sync_progress_user_time ON sync_progress(user_id, updated_at)`,
+    `CREATE TABLE IF NOT EXISTS sync_counts (
+      user_id TEXT PRIMARY KEY,
+      n INTEGER NOT NULL
+    )`,
+    `CREATE TRIGGER IF NOT EXISTS sync_count_ins AFTER INSERT ON sync_progress
+      BEGIN
+        INSERT OR IGNORE INTO sync_counts (user_id, n) VALUES (NEW.user_id, 0);
+        UPDATE sync_counts SET n = n + 1 WHERE user_id = NEW.user_id;
+      END`,
+    `CREATE TRIGGER IF NOT EXISTS sync_count_del AFTER DELETE ON sync_progress
+      BEGIN UPDATE sync_counts SET n = MAX(n - 1, 0) WHERE user_id = OLD.user_id; END`,
+  ],
 ];

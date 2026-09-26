@@ -185,3 +185,12 @@ code.key.fresh { background: color-mix(in srgb, var(--accent) 16%, transparent);
 .demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; padding: 8px max(16px, env(safe-area-inset-left)); background: color-mix(in srgb, #f38020 12%, var(--bg)); border-bottom: 1px solid color-mix(in srgb, #f38020 30%, var(--line)); font-size: .85rem; text-align: center; }
 .demo-link { border: 0; background: none; color: #f38020; font: inherit; font-weight: 600; cursor: pointer; padding: 2px 4px; }
 .demo-link:hover { text-decoration: underline; }
+
+/* Đồng bộ tiến độ (KOSync) trong sheet Nối máy */
+.sync-section { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sync-section h4 { margin: 0 0 6px; }
+.sync-help { margin: 8px 0; font-size: .9rem; }
+.sync-help summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.sync-help .steps { margin: 6px 0 0; gap: 8px; }
+.check { display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+.check input { margin-top: 3px; }

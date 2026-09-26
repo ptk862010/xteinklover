@@ -295,7 +295,8 @@ export async function changePassword(req: Request, env: Env, auth: SessionAuth):
   const bad = await recheckPassword(env, auth, body.current);
   if (bad) return bad;
   // Đổi mật khẩu + đăng xuất mọi nơi khác trong một transaction
-  await db.changePasswordAndRevoke(env.DB, auth.user.id, await hashProof(body.next), auth.tokenHash);
+  // Mã đồng bộ của máy đọc cũng bị thu hồi, trừ khi người dùng chọn giữ (web: ô "Giữ mã của các máy đọc", mặc định không)
+  await db.changePasswordAndRevoke(env.DB, auth.user.id, await hashProof(body.next), auth.tokenHash, body.keepSyncKeys === true);
   return json({ ok: true });
 }
 

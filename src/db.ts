@@ -113,19 +113,25 @@ export async function sessionRecheckFails(db: D1Database, tokenHash: string): Pr
   return r?.recheck_fails ?? Number.MAX_SAFE_INTEGER;
 }
 
-/** Đổi mật khẩu, đăng xuất mọi phiên khác và thu hồi mọi mã ứng dụng trong một transaction (lộ mật khẩu thì đổi là sạch). */
+/**
+ * Đổi mật khẩu, đăng xuất mọi phiên khác, thu hồi mọi mã ứng dụng và (mặc định) mọi mã đồng bộ trong một
+ * transaction (lộ mật khẩu thì đổi là sạch). `keepSyncKeys`: người dùng chọn giữ mã của các máy đọc.
+ */
 export async function changePasswordAndRevoke(
   db: D1Database,
   userId: string,
   h: { hash: string; salt: string; iterations: number },
   keepTokenHash: string,
+  keepSyncKeys = false,
 ): Promise<void> {
-  await db.batch([
+  const stmts = [
     db.prepare("UPDATE users SET pass_hash = ?, pass_salt = ?, pass_iter = ? WHERE id = ?").bind(h.hash, h.salt, h.iterations, userId),
     db.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").bind(userId, keepTokenHash),
     db.prepare("DELETE FROM app_tokens WHERE user_id = ?").bind(userId),
     db.prepare("UPDATE sessions SET recheck_fails = 0 WHERE token_hash = ?").bind(keepTokenHash),
-  ]);
+  ];
+  if (!keepSyncKeys) stmts.push(db.prepare("DELETE FROM sync_keys WHERE user_id = ?").bind(userId));
+  await db.batch(stmts);
 }
 
 // ── thiết bị quen (cookie đánh dấu trình duyệt đã từng đăng nhập đúng) ──
@@ -173,17 +179,31 @@ export async function purgeSessions(db: D1Database, nowMs: number): Promise<void
  * INACTIVE_DAYS ngày) — để tài khoản rác không chiếm chỗ MAX_USERS mãi.
  */
 export const INACTIVE_DAYS = 14;
+/**
+ * Tài khoản có mã đồng bộ dùng trong ngần này ngày thì không coi là bỏ hoang (đọc một cuốn dài trên máy mà
+ * không bấm đồng bộ vẫn giữ tài khoản), nhưng tạo mã rồi bỏ đi thì không giữ chỗ MAX_USERS mãi.
+ */
+export const SYNC_KEEP_DAYS = 90;
 
 export async function cronCleanup(db: D1Database, nowMs: number): Promise<void> {
   const cutoff = nowMs - INACTIVE_DAYS * 86400_000;
-  const stale = `SELECT id FROM users u WHERE u.last_login < ?1 AND NOT EXISTS (SELECT 1 FROM books b WHERE b.user_id = u.id) LIMIT 50`;
+  const syncCutoff = nowMs - SYNC_KEEP_DAYS * 86400_000;
+  const stale = `SELECT id FROM users u WHERE u.last_login < ?1
+    AND NOT EXISTS (SELECT 1 FROM books b WHERE b.user_id = u.id)
+    AND NOT EXISTS (SELECT 1 FROM sync_keys k WHERE k.user_id = u.id AND k.last_used >= ?2)
+    ORDER BY u.id LIMIT 50`;
+  const del = (table: string, col = "user_id") => db.prepare(`DELETE FROM ${table} WHERE ${col} IN (${stale})`).bind(cutoff, syncCutoff);
   await db.batch([
     db.prepare("DELETE FROM attempts WHERE window_start < ?").bind(Math.floor(nowMs / 1000) - 2 * 86400),
-    db.prepare(`DELETE FROM sessions WHERE user_id IN (${stale})`).bind(cutoff),
-    db.prepare(`DELETE FROM devices WHERE user_id IN (${stale})`).bind(cutoff),
-    db.prepare(`DELETE FROM identities WHERE user_id IN (${stale})`).bind(cutoff),
-    db.prepare(`DELETE FROM app_tokens WHERE user_id IN (${stale})`).bind(cutoff),
-    db.prepare(`DELETE FROM users WHERE id IN (${stale})`).bind(cutoff),
+    del("sessions"),
+    del("devices"),
+    del("identities"),
+    del("app_tokens"),
+    // Xóa bảng đồng bộ TRƯỚC users: tập `stale` được tính lại ở từng câu, mất dòng users là mất luôn user đó khỏi tập
+    del("sync_progress"),
+    del("sync_counts"),
+    del("sync_keys"),
+    del("users", "id"),
     db.prepare("DELETE FROM oauth_pending WHERE expires_at <= ?").bind(nowMs),
   ]);
 }
@@ -367,6 +387,9 @@ export async function deleteUserCascade(db: D1Database, userId: string, nowMs: n
     db.prepare("DELETE FROM devices WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM identities WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM app_tokens WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM sync_progress WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM sync_counts WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM sync_keys WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM users WHERE id = ?").bind(userId),
   ]);
 }
@@ -490,4 +513,148 @@ export async function insertAppToken(db: D1Database, t: AppTokenRow, max: number
 export async function deleteAppToken(db: D1Database, userId: string, id: string): Promise<boolean> {
   const r = await db.prepare("DELETE FROM app_tokens WHERE id = ? AND user_id = ?").bind(id, userId).run();
   return r.meta.changes > 0;
+}
+
+// ── đồng bộ tiến độ đọc (KOSync) ────────────────────────
+
+export interface SyncKeyRow {
+  id: string;
+  user_id: string;
+  name: string;
+  salt: string;
+  v_plain: string;
+  v_space: string;
+  v_dash: string;
+  created_at: number;
+  last_used: number;
+}
+
+/** Tiến độ máy gửi lên (đã kiểm và chuẩn hóa ở kosync.ts). */
+export interface SyncProgressIn {
+  document: string;
+  progress: string;
+  percentage: number;
+  device: string;
+  device_id: string | null;
+}
+
+export interface SyncProgressRow extends SyncProgressIn {
+  /** giây */
+  updated_at: number;
+}
+
+/** Thêm mã nếu người đó chưa đủ `max` mã (kiểm và ghi trong một câu lệnh). */
+export async function insertSyncKey(db: D1Database, k: SyncKeyRow, max: number): Promise<boolean> {
+  const r = await db
+    .prepare(
+      `INSERT INTO sync_keys (id, user_id, name, salt, v_plain, v_space, v_dash, created_at, last_used)
+       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9 WHERE (SELECT COUNT(*) FROM sync_keys WHERE user_id = ?2) < ?10`,
+    )
+    .bind(k.id, k.user_id, k.name, k.salt, k.v_plain, k.v_space, k.v_dash, k.created_at, k.last_used, max)
+    .run();
+  return r.meta.changes > 0;
+}
+
+export async function listSyncKeys(db: D1Database, userId: string): Promise<SyncKeyRow[]> {
+  const r = await db.prepare("SELECT * FROM sync_keys WHERE user_id = ? ORDER BY created_at DESC").bind(userId).all<SyncKeyRow>();
+  return r.results;
+}
+
+export async function deleteSyncKey(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM sync_keys WHERE id = ? AND user_id = ?").bind(id, userId).run();
+  return r.meta.changes > 0;
+}
+
+/**
+ * User + mọi mã đồng bộ của người đó trong MỘT truy vấn (tên không tồn tại không trả lời nhanh hơn một vòng D1).
+ * null = không có tên này. Lỗi D1 để nổi lên: người gọi phải trả 5xx, không được coi là sai mã (401).
+ */
+export async function getSyncAuth(db: D1Database, username: string): Promise<{ user: UserRow; keys: SyncKeyRow[] } | null> {
+  const r = await db
+    .prepare(
+      `SELECT u.*, k.id AS k_id, k.name AS k_name, k.salt AS k_salt, k.v_plain AS k_v_plain, k.v_space AS k_v_space,
+              k.v_dash AS k_v_dash, k.created_at AS k_created_at, k.last_used AS k_last_used
+       FROM users u LEFT JOIN sync_keys k ON k.user_id = u.id WHERE u.username = ?`,
+    )
+    .bind(username)
+    .all<UserRow & Record<string, unknown>>();
+  if (!r.results.length) return null;
+  const first = r.results[0];
+  const user: UserRow = {
+    id: first.id, username: first.username, pass_hash: first.pass_hash, pass_salt: first.pass_salt, pass_iter: first.pass_iter,
+    client_kdf: first.client_kdf, opds_key_hash: first.opds_key_hash, created_at: first.created_at, last_login: first.last_login,
+  };
+  const keys = r.results
+    .filter((x) => x.k_id)
+    .map((x) => ({
+      id: x.k_id as string, user_id: user.id, name: x.k_name as string, salt: x.k_salt as string, v_plain: x.k_v_plain as string,
+      v_space: x.k_v_space as string, v_dash: x.k_v_dash as string, created_at: x.k_created_at as number, last_used: x.k_last_used as number,
+    }));
+  return { user, keys };
+}
+
+/** Ghi lần dùng cuối của mã và tính là tài khoản còn hoạt động (ms, không lùi). */
+export async function touchSyncKey(db: D1Database, keyId: string, userId: string, nowMs: number): Promise<void> {
+  await db.batch([
+    db.prepare("UPDATE sync_keys SET last_used = MAX(last_used, ?) WHERE id = ?").bind(nowMs, keyId),
+    db.prepare("UPDATE users SET last_login = MAX(last_login, ?) WHERE id = ?").bind(nowMs, userId),
+  ]);
+}
+
+export async function getSyncProgress(db: D1Database, userId: string, document: string): Promise<SyncProgressRow | null> {
+  return db
+    .prepare("SELECT document, progress, percentage, device, device_id, updated_at FROM sync_progress WHERE user_id = ? AND document = ?")
+    .bind(userId, document)
+    .first<SyncProgressRow>();
+}
+
+/** Ghi đè tiến độ sách đã có (đường thường gặp: một lượt ghi). false = chưa có dòng này. */
+export async function updateSyncProgress(db: D1Database, userId: string, p: SyncProgressIn, nowSec: number): Promise<boolean> {
+  const r = await db
+    .prepare("UPDATE sync_progress SET progress = ?, percentage = ?, device = ?, device_id = ?, updated_at = ? WHERE user_id = ? AND document = ?")
+    .bind(p.progress, p.percentage, p.device, p.device_id, nowSec, userId, p.document)
+    .run();
+  return r.meta.changes > 0;
+}
+
+/**
+ * Sách mới, trong một transaction:
+ *  1. Thêm dòng — nguyên tử với ON CONFLICT (hai PUT song song cho cùng một sách mới không lỗi UNIQUE),
+ *     và chỉ khi user còn tồn tại + còn mã đồng bộ (không để dòng mồ côi khi PUT chạy chen với xóa tài khoản).
+ *  2. Vượt `maxDocs` thì đẩy ra sách lâu nhất không đụng tới (trừ chính sách vừa thêm) — chạm trần không làm
+ *     đồng bộ hỏng. Đọc số sách từ sync_counts (1 dòng), không COUNT(*).
+ * true = dòng đã được ghi.
+ */
+export async function insertSyncProgress(db: D1Database, userId: string, p: SyncProgressIn, nowSec: number, maxDocs: number): Promise<boolean> {
+  const [ins] = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO sync_progress (user_id, document, progress, percentage, device, device_id, updated_at)
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+         WHERE EXISTS (SELECT 1 FROM users WHERE id = ?1) AND EXISTS (SELECT 1 FROM sync_keys WHERE user_id = ?1)
+         ON CONFLICT (user_id, document) DO UPDATE SET
+           progress = excluded.progress, percentage = excluded.percentage, device = excluded.device,
+           device_id = excluded.device_id, updated_at = excluded.updated_at`,
+      )
+      .bind(userId, p.document, p.progress, p.percentage, p.device, p.device_id, nowSec),
+    db
+      .prepare(
+        `DELETE FROM sync_progress WHERE user_id = ?1 AND document = (
+           SELECT document FROM sync_progress WHERE user_id = ?1 AND document != ?2 ORDER BY updated_at ASC, document ASC LIMIT 1
+         ) AND (SELECT n FROM sync_counts WHERE user_id = ?1) > ?3`,
+      )
+      .bind(userId, p.document, maxDocs),
+  ]);
+  return ins.meta.changes > 0;
+}
+
+export async function syncDocCount(db: D1Database, userId: string): Promise<number> {
+  return (await db.prepare("SELECT n FROM sync_counts WHERE user_id = ?").bind(userId).first<number>("n")) ?? 0;
+}
+
+export async function clearSyncProgress(db: D1Database, userId: string): Promise<void> {
+  await db.batch([
+    db.prepare("DELETE FROM sync_progress WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM sync_counts WHERE user_id = ?").bind(userId),
+  ]);
 }

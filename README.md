@@ -77,6 +77,17 @@ Tab **Dán link**: dán link bài báo, blog → trang tự cắt lấy nội du
 
 Trên Android, cài trang như app (menu Chrome → *Thêm vào màn hình chính*), rồi ở app nào cũng bấm **Chia sẻ → Xteink Lover**. iPhone: Phím tắt mở `https://<địa-chỉ>/?url=<link>`.
 
+### Đồng bộ tiến độ đọc (KOReader, CrossPoint)
+
+Đọc trên máy này, mở sách trên máy kia là đọc tiếp đúng chỗ. Xteink Lover nói giao thức **KOSync** của KOReader (đạt bộ kiểm `kosync-conformance`), nên chạy với **KOReader** (Kindle đã jailbreak, Kobo, Android) và **CrossPoint** (Xteink). Không phải đăng ký máy chủ đồng bộ nào khác.
+
+1. Trên web: **⚡ Nối máy → Đồng bộ tiến độ đọc → Tạo mã đồng bộ**, mỗi máy một mã (20 chữ số, hiện một lần, tối đa 5). Mã là Password trên máy đọc, không phải mật khẩu tài khoản; gõ liền, cách dấu cách hay gạch ngang đều được.
+2. Hai máy lấy **cùng một file** từ kệ OPDS này.
+3. **KOReader:** mở sách → Tools → Progress sync → Custom sync server = `https://<địa chỉ>` → **Login** (tên đăng nhập + mã). Document matching method = **Binary**. Bật *Automatically keep documents in sync* (trên Kindle phải đặt trước *Settings → Network → Action when Wi-Fi is off = Turn on*); nên đặt cả hai chiều *Sync to a newer / older state* = **Prompt**.
+4. **CrossPoint:** Settings → System → KOReader Sync: Sync Server URL = `https://<địa chỉ>` (**có** `https://`), Username, Password = mã → Authenticate. **Document Matching = Binary** (mặc định là Filename, phải đổi). Đồng bộ bấm tay: Reader Menu → Sync Progress.
+
+Đăng ký tài khoản từ máy đọc bị tắt (tài khoản chỉ tạo trên web). Đổi mật khẩu thì mọi mã đồng bộ bị thu hồi, trừ khi tích ô "Giữ mã đồng bộ của các máy đọc". Tài khoản có mã được dùng trong 90 ngày không bị coi là bỏ hoang.
+
 ### Gửi từ Obsidian
 
 Plugin Obsidian **Xteink Sync** gửi note thẳng lên kệ, từ bất cứ đâu: trên web vào **Tài khoản → Mã cho ứng dụng → Tạo mã**, dán mã vào cài đặt plugin (Gửi tới: Kệ Xteink Lover). Mã chỉ xem, gửi, xóa được sách; tối đa 5 mã, thu hồi riêng từng mã.
@@ -111,6 +122,10 @@ Cột "Mặc định" là giá trị khi không khai báo biến. `wrangler.toml
 | `SHOW_SELF_HOST` | trống | `"1"` = hiện nút "Tự dựng" / Deploy to Cloudflare (bản chung của tác giả). Bản tự dựng để trống: chỉ có dòng ghi công nhỏ ở chân trang |
 | `GOOGLE_CLIENT_ID` | trống | Bật đăng nhập bằng Google (cần cả `GOOGLE_CLIENT_SECRET`) |
 | `GOOGLE_CLIENT_SECRET` (secret) | trống | Client secret của Google |
+| `MAX_SYNC_DOCS` | 1000 | Đồng bộ tiến độ: số sách tối đa mỗi người; vượt thì đẩy ra sách lâu nhất không đụng tới (không báo lỗi) |
+| `MAX_SYNC_NEW_PER_DAY` | 300 | Đồng bộ tiến độ: số sách **mới** tối đa mỗi người mỗi ngày (0 = không giới hạn) |
+| `MAX_SYNC_WRITES_PER_DAY` | 2000 | Đồng bộ tiến độ: lượt ghi tối đa mỗi người mỗi ngày; quá thì máy nhận 503 (tự gửi lại sau), không 401 |
+| `MAX_SYNC_WRITES_PER_DAY_TOTAL` | 15000 | Đồng bộ tiến độ: lượt ghi tối đa cả hệ thống mỗi ngày (giữ phần quota D1 cho kệ sách) |
 
 Ngày tính theo UTC, reset lúc 7:00 sáng giờ Việt Nam, trùng giờ Cloudflare reset quota free.
 
@@ -156,6 +171,12 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 | `DELETE /api/books/<id>` | xóa sách |
 | `GET /opds` | feed OPDS (Basic auth: tên đăng nhập + khóa OPDS) |
 | `GET /books/<id>.epub` | tải sách (Basic auth hoặc cookie) |
+| `GET /api/sync-keys` · `POST /api/sync-keys` | liệt kê mã đồng bộ + số sách đã đồng bộ / tạo mã `{name, proof?}` (như mã ứng dụng) → `{id, name, code, username, server}` |
+| `DELETE /api/sync-keys/<id>` · `DELETE /api/sync-progress` | thu hồi một mã · xóa hết tiến độ đồng bộ |
+| `GET /users/auth` | KOSync: kiểm đăng nhập (`x-auth-user`, `x-auth-key` = md5 của mã đồng bộ gõ vào) |
+| `PUT /syncs/progress` | KOSync: `{document, progress, percentage, device, device_id?}` → `{document, timestamp}` |
+| `GET /syncs/progress/<document>` | KOSync: tiến độ đã lưu, hoặc `{}` nếu chưa có |
+| `POST /users/create` · `GET /healthcheck` | KOSync: đăng ký bị tắt (402) · `{"state":"OK"}` |
 
 `proof` = hex của PBKDF2-SHA256(mật khẩu, `"xteinklover|v1|" + username`, 600.000 vòng, 32 byte). Mọi request đổi dữ liệu phải có `Origin` cùng trang.
 
@@ -170,6 +191,7 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 - Nhập lại mật khẩu sai 5 lần trong một phiên (đổi mật khẩu / xóa tài khoản) thì phiên đó bị đăng xuất; các phiên khác không ảnh hưởng.
 - Tối đa 10 phiên đăng nhập mỗi người; đổi mật khẩu đăng xuất mọi nơi khác. Khóa OPDS riêng, đổi được bất cứ lúc nào.
 - Cookie `__Host-`, `HttpOnly`, `SameSite=Lax`, kiểm `Origin` mọi request ghi; trang có CSP chặn script lạ.
+- Đồng bộ tiến độ: máy đọc gửi md5 của mã đồng bộ; máy chủ chỉ lưu `sha256(salt riêng từng mã + md5)` cho 3 cách gõ. Mã chỉ dùng được cho `/users/auth` và `/syncs/*`, không mở được kệ sách hay tài khoản; cookie phiên không dùng được ở đó. Lỗi máy chủ không bao giờ trả 401 (KOReader nhận 401 sẽ bỏ tiến độ). CrossPoint gửi kèm mã thô trong header `Authorization` và không kiểm chứng chỉ TLS: đừng dùng mã trên Wi-Fi lạ, lộ thì thu hồi trên web.
 - Google: authorization code + PKCE, `state` và `nonce` giữ trong cookie HttpOnly 10 phút. `id_token` nhận thẳng từ token endpoint của Google qua HTTPS nên chỉ kiểm `iss`/`aud`/`exp`/`nonce`, không kiểm chữ ký (OpenID Connect Core 3.1.3.7). Liên kết Google vào tài khoản có mật khẩu phải nhập lại mật khẩu, để phiên bị trộm không gắn được Google của kẻ trộm.
 
 ## English
@@ -178,6 +200,7 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 
 - Demo: https://xteinklover.ongk.dev/?lang=en (limited space, for trying it out). For everyday use, run your own copy with the Deploy button: free, no card, 1 GB for books on the Cloudflare free plan.
 - Obsidian: the **Xteink Sync** plugin (Community plugins) sends notes here with an app token
+- **Reading progress sync** for **KOReader** (Kindle, Kobo, Android) and **CrossPoint** (Xteink): the same account is a KOReader-compatible sync server (passes `kosync-conformance`). Under ⚡ Connect → *Sync reading progress*, create one **sync code** per device and use it as the reader's password with server `https://<your address>`. Set **Document matching = Binary** on both readers (CrossPoint defaults to Filename) and get the books from this shelf so both have the same file. On a Kindle, set *Settings → Network → Action when Wi-Fi is off = Turn on* before enabling KOReader's automatic sync.
 
 **Requires CrossPoint firmware** (open source, tested with 1.6); the stock Xteink firmware has no OPDS. Install it from Chrome/Edge on a computer at https://crosspointreader.com/#flash-tools.
 

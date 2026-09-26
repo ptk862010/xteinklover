@@ -62,6 +62,8 @@
     [/^Mã ứng dụng không dùng được cho việc này, đăng nhập trên web$/, "App tokens can't do this. Sign in on the website"],
     [/^Tối đa (\d+) mã, thu hồi bớt mã cũ trước$/, "At most $1 tokens. Revoke an old one first"],
     [/^Không có mã này$/, "Token not found"],
+    // Đồng bộ tiến độ
+    [/^Tối đa (\d+) mã đồng bộ, thu hồi bớt mã cũ trước$/, "At most $1 sync codes. Revoke an old one first"],
     // Sách
     [/^Không có sách này$/, "Book not found"],
     [/^Thiếu Content-Length$/, "Missing Content-Length"],

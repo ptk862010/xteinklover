@@ -197,6 +197,43 @@
     <li data-en-html="Open the shelf on the reader (<b>Settings → OPDS</b>) → new books are at the top → tap to download.">Mở kệ trên máy (<b>Settings → OPDS</b>) → sách mới nằm trên cùng → bấm tải.</li>
   </ol>
   <p class="muted small" data-en="The reader downloads books over HTTPS from any Wi-Fi; it doesn't need to be on the same network as your phone or computer.">Máy kéo sách qua HTTPS từ bất kỳ WiFi nào, không cần cùng mạng với điện thoại hay máy tính.</p>
+
+  <section id="syncSection" class="sync-section">
+    <h4 data-en="Sync reading progress (KOReader / CrossPoint)">Đồng bộ tiến độ đọc (KOReader / CrossPoint)</h4>
+    <p class="muted small" data-en-html="Read on one device, open the book on another and continue where you left off. Works with <b>KOReader</b> (Kindle, Kobo, Android) and <b>CrossPoint</b> (Xteink). Create <b>one sync code per device</b>: it's the Password on the reader (not your account password).">Đọc trên máy này, mở sách trên máy kia là đọc tiếp đúng chỗ. Chạy với <b>KOReader</b> (Kindle, Kobo, Android) và <b>CrossPoint</b> (Xteink). Mỗi máy tạo <b>một mã đồng bộ</b>: đó là Password trên máy đọc (không phải mật khẩu tài khoản).</p>
+    <div class="kv"><span data-en="Server">Máy chủ</span><code id="syncServer"></code><button class="btn tiny" data-copy="syncServer" type="button">Copy</button></div>
+    <div class="kv"><span>User</span><code id="syncUser">…</code><button class="btn tiny" data-copy="syncUser" type="button">Copy</button></div>
+    <ul id="syncKeyList" class="token-list"></ul>
+    <div id="syncNew" class="token-new" hidden>
+      <div class="kv"><span data-en="Sync code">Mã đồng bộ</span><code id="syncCode" class="key fresh"></code><button class="btn tiny" id="syncCopy" type="button">Copy</button></div>
+      <p class="muted small" data-en="Shown only once. Type the 20 digits as the Password on the reader (spaces or dashes between groups are fine).">Chỉ hiện một lần. Gõ 20 chữ số vào ô Password trên máy đọc (cách nhóm bằng dấu cách hay gạch ngang đều được).</p>
+    </div>
+    <form id="syncForm" class="auth-form" novalidate>
+      <input type="text" name="username" autocomplete="username" id="syncUserHidden" hidden>
+      <input id="syncName" class="input" maxlength="40" placeholder="Tên máy, vd: Kindle, Xteink" data-en-placeholder="Device name, e.g. Kindle, Xteink">
+      <input id="syncPass" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại để xác nhận" data-en-placeholder="Current password to confirm">
+      <button class="btn" type="submit" data-en="Create sync code">Tạo mã đồng bộ</button>
+    </form>
+    <p class="muted small"><span id="syncDocs"></span> <button class="btn tiny" id="syncClear" type="button" data-en="Clear sync data">Xóa dữ liệu đồng bộ</button></p>
+    <details class="sync-help">
+      <summary>KOReader (Kindle, Kobo, Android)</summary>
+      <ol class="steps small">
+        <li data-en-html="Get books from this shelf (search → <b>OPDS catalog</b> → add the <b>/opds</b> address with your OPDS key), so both readers have the <b>same file</b>.">Lấy sách từ kệ này (tìm kiếm → <b>OPDS catalog</b> → thêm địa chỉ <b>/opds</b> với khóa OPDS), để hai máy có <b>cùng một file</b>.</li>
+        <li data-en-html="Open a book → <b>Tools → Progress sync → Custom sync server</b> = the Server above → <b>Login</b> with User + this device's sync code. Don't tap Register.">Mở một cuốn → <b>Tools → Progress sync → Custom sync server</b> = Máy chủ ở trên → <b>Login</b> bằng User + mã đồng bộ của máy này. Đừng bấm Register.</li>
+        <li data-en-html="<b>Document matching method = Binary</b> (the default)."><b>Document matching method = Binary</b> (mặc định).</li>
+        <li data-en-html="Kindle: first set <b>Settings → Network → Action when Wi-Fi is off = Turn on</b>, otherwise KOReader refuses automatic sync.">Kindle: trước tiên đặt <b>Settings → Network → Action when Wi-Fi is off = Turn on</b>, không thì KOReader không cho tự đồng bộ.</li>
+        <li data-en-html="Turn on <b>Automatically keep documents in sync</b>; set both <b>Sync to a newer / older state = Prompt</b> so you always see the jump.">Bật <b>Automatically keep documents in sync</b>; đặt cả <b>Sync to a newer / older state = Prompt</b> để luôn thấy mà chọn.</li>
+      </ol>
+    </details>
+    <details class="sync-help">
+      <summary>CrossPoint (Xteink)</summary>
+      <ol class="steps small">
+        <li data-en-html="<b>Settings → System → KOReader Sync</b>: Sync Server URL = the Server above (<b>with https://</b>), Username, Password = this device's sync code → <b>Authenticate</b>. “Sign up” says the name is already registered: that's expected, accounts are made here."><b>Settings → System → KOReader Sync</b>: Sync Server URL = Máy chủ ở trên (<b>có https://</b>), Username, Password = mã đồng bộ của máy này → <b>Authenticate</b>. “Sign up” báo tên đã có: bình thường, tài khoản tạo ở đây.</li>
+        <li data-en-html="<b>Document Matching = Binary</b>. The default is Filename: <b>change it</b>, or the two readers never match."><b>Document Matching = Binary</b>. Mặc định là Filename: <b>phải đổi</b>, không thì hai máy không bao giờ khớp.</li>
+        <li data-en-html="Sync is manual: while reading, <b>Reader Menu → Sync Progress</b>. If you often re-read earlier pages, set Sync Behavior to <b>Ask every time</b>.">Đồng bộ bấm tay: đang đọc → <b>Reader Menu → Sync Progress</b>. Hay đọc lại đoạn trước thì đặt Sync Behavior = <b>Ask every time</b>.</li>
+      </ol>
+    </details>
+  </section>
 </aside>
 
 <!-- Tự dựng bản riêng -->
@@ -256,6 +293,7 @@
     <input type="text" name="username" autocomplete="username" id="pwUser" hidden>
     <input id="pwCurrent" class="input" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" data-en-placeholder="Current password" required>
     <input id="pwNext" class="input" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (tối thiểu 8 ký tự)" data-en-placeholder="New password (at least 8 characters)" required minlength="8" maxlength="128">
+    <label class="check small"><input type="checkbox" id="pwKeepSync"> <span data-en="Keep the sync codes of my readers (otherwise every reader must log in again)">Giữ mã đồng bộ của các máy đọc (không thì mọi máy phải đăng nhập lại)</span></label>
     <button class="btn" type="submit" data-en="Change password">Đổi mật khẩu</button>
   </form>
   </div>

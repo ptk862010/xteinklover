@@ -9,7 +9,7 @@ compatibility_date = "2026-09-01"
 [assets]
 directory = "public"
 binding = "ASSETS"
-run_worker_first = ["/api/*", "/opds", "/opds/*", "/books/*", "/auth/*"]
+run_worker_first = ["/api/*", "/opds", "/opds/*", "/books/*", "/auth/*", "/users/*", "/syncs/*", "/healthcheck"]
 
 # Không ghi id: Cloudflare tự tạo lúc deploy lần đầu. Worker tự tạo bảng D1 khi chạy.
 # KV free: 1 GB, 25 MB/file, 1.000 ghi/ngày — chỉ giữ file EPUB.
