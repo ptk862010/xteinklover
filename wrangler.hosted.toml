@@ -1,8 +1,14 @@
-# Bản hosted của tác giả: https://app.xteinklover.workers.dev
+# Bản hosted của tác giả: https://xteinklover.ongk.dev (địa chỉ cũ https://app.xteinklover.workers.dev vẫn chạy)
 # Deploy: npm run deploy:hosted
 name = "app"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
+
+# Tên miền riêng: Facebook chặn link *.workers.dev, và tên miền riêng mới đặt được luật chặn IP / rate limiting.
+# Giữ workers.dev song song cho máy đọc sách đã cài OPDS bằng địa chỉ cũ.
+# Đăng nhập Google: mỗi địa chỉ cần một redirect URI riêng (<địa chỉ>/auth/google/callback) trong Google Cloud Console.
+workers_dev = true
+routes = [{ pattern = "xteinklover.ongk.dev", custom_domain = true }]
 
 [assets]
 directory = "public"

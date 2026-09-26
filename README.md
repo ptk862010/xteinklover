@@ -2,7 +2,7 @@
 
 "Send to Kindle" cho máy đọc sách **Xteink** chạy firmware **CrossPoint**: thả file vào trang web → thành EPUB → nằm trên **kệ OPDS riêng** → trên máy mở kệ là tải. Không cần cùng WiFi, không cần bật File Transfer.
 
-Dùng thử: **https://app.xteinklover.workers.dev** (bản demo, có giới hạn chỗ). Dùng lâu dài thì nên **tự dựng bản riêng** bằng nút bên dưới: miễn phí, không cần thẻ, gói miễn phí của Cloudflare cho 1 GB lưu sách, sách chỉ nằm trong tài khoản của bạn.
+Dùng thử: **https://xteinklover.ongk.dev** (bản demo, có giới hạn chỗ). Dùng lâu dài thì nên **tự dựng bản riêng** bằng nút bên dưới: miễn phí, không cần thẻ, gói miễn phí của Cloudflare cho 1 GB lưu sách, sách chỉ nằm trong tài khoản của bạn.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover)
 
@@ -176,7 +176,7 @@ Mỗi lần đăng nhập sai ghi 2–3 dòng D1. Kẻ dò mật khẩu dùng r�
 
 **Send-to-Kindle for Xteink e-readers running CrossPoint firmware.** Drop a file (EPUB, MOBI, AZW3, AZW, PRC, PDF, CBZ, Markdown, TXT, HTML), paste text, or paste an article link. It is converted to EPUB in your browser and added to your private OPDS shelf. The reader pulls it over Wi-Fi from anywhere. The interface is in English and Vietnamese (EN/VI button, or `?lang=en`).
 
-- Demo: https://app.xteinklover.workers.dev/?lang=en (limited space, for trying it out). For everyday use, run your own copy with the Deploy button: free, no card, 1 GB for books on the Cloudflare free plan.
+- Demo: https://xteinklover.ongk.dev/?lang=en (limited space, for trying it out). For everyday use, run your own copy with the Deploy button: free, no card, 1 GB for books on the Cloudflare free plan.
 - Obsidian: the **Xteink Sync** plugin (Community plugins) sends notes here with an app token
 
 **Requires CrossPoint firmware** (open source, tested with 1.6); the stock Xteink firmware has no OPDS. Install it from Chrome/Edge on a computer at https://crosspointreader.com/#flash-tools.
