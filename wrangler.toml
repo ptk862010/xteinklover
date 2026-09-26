@@ -1,5 +1,7 @@
 # Cấu hình cho người tự cài (nút "Deploy to Cloudflare" hoặc `npm run deploy`).
-# Bản hosted của tác giả dùng wrangler.hosted.toml.
+# Bản hosted của tác giả dùng wrangler.hosted.toml (Workers Builds: deploy command có `-c wrangler.hosted.toml`).
+# Cloudflare có thể cảnh báo / tự mở PR đổi name thành "app" (tên worker bản hosted): ĐỪNG sửa, ĐỪNG merge —
+# name ở đây là tên worker của người tự cài.
 name = "xteinklover"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
