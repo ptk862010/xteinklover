@@ -122,6 +122,12 @@
     [/^ảnh trang, (\d+) trang$/, "page images, $1 pages"],
     [/^chữ, (\d+) trang$/, "text, $1 pages"],
     [/^(\d+) trang$/, "$1 pages"],
+    // Bìa sách
+    [/^Nhập tên sách để tìm$/, "Enter a title to search"],
+    [/^Tối đa (\d+) lần tìm bìa mỗi giờ, thử lại sau$/, "At most $1 cover searches per hour, try again later"],
+    [/^Ảnh bìa quá lớn$/, "Cover image is too large"],
+    [/^Ảnh bìa phải là JPEG$/, "Cover image must be a JPEG"],
+    [/^Đổi bìa quá nhiều, thử lại sau$/, "Too many cover changes, try again later"],
   ];
 
   function tr(msg) {

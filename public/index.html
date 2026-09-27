@@ -236,6 +236,22 @@
   </section>
 </aside>
 
+<!-- Chọn bìa -->
+<aside class="sheet" id="coverSheet" hidden role="dialog" aria-modal="true" aria-labelledby="coverTitle">
+  <div class="sheet-head"><h3 id="coverTitle" data-en="Book cover">Bìa sách</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
+  <p class="cover-book" id="coverBook"></p>
+  <button class="btn wide" id="coverFromFile" type="button" data-en="Use the cover inside the file">Lấy bìa có sẵn trong file</button>
+  <div class="or" data-en="or search online">hoặc tìm trên mạng</div>
+  <form id="coverForm" class="cover-form">
+    <input id="coverTitleIn" class="input" type="search" placeholder="Tên sách" data-en-placeholder="Title" aria-label="Tên sách" data-en-aria-label="Title" maxlength="200">
+    <input id="coverAuthorIn" class="input" type="search" placeholder="Tác giả" data-en-placeholder="Author" aria-label="Tác giả" data-en-aria-label="Author" maxlength="200">
+    <button class="btn primary" id="coverSearchBtn" type="submit" data-en="Search">Tìm</button>
+  </form>
+  <p class="muted small" id="coverStatus" aria-live="polite"></p>
+  <div id="coverResults" class="cover-grid"></div>
+  <p class="muted small" data-en="Sources: Google Books, Open Library. Tap a cover to use it. Covers show on this web shelf only.">Nguồn: Google Books, Open Library. Bấm vào bìa để chọn. Bìa chỉ hiện trên kệ web này.</p>
+</aside>
+
 <!-- Tự dựng bản riêng -->
 <aside class="sheet" id="selfSheet" hidden role="dialog" aria-modal="true" aria-labelledby="selfTitle">
   <div class="sheet-head"><h3 id="selfTitle" data-en="Run your own copy on Cloudflare">Tự dựng bản riêng trên Cloudflare</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>

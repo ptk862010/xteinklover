@@ -20,6 +20,8 @@ export interface BookRow {
   size: number;
   added: string;
   blob_key: string;
+  /** Phiên bản ảnh bìa trên kệ web (0 = chưa có), tăng mỗi lần đổi bìa */
+  cover?: number;
 }
 
 /** Sách trả cho trình duyệt / OPDS: không lộ user_id, blob_key. */
@@ -30,10 +32,12 @@ export interface BookMeta {
   size: number;
   /** ISO 8601 */
   added: string;
+  /** Phiên bản ảnh bìa (0 = chưa có) — dùng làm ?v= cho địa chỉ ảnh */
+  cover?: number;
 }
 
 export function toMeta(b: BookRow): BookMeta {
-  return { id: b.id, title: b.title, author: b.author, size: b.size, added: b.added };
+  return { id: b.id, title: b.title, author: b.author, size: b.size, added: b.added, cover: b.cover ?? 0 };
 }
 
 // ── schema ─────────────────────────────────────────────
@@ -279,6 +283,31 @@ export async function takeBook(db: D1Database, userId: string, id: string, nowMs
     db.prepare("DELETE FROM books WHERE id = ? AND user_id = ? RETURNING blob_key").bind(id, userId),
   ]);
   return del.results[0]?.blob_key ?? null;
+}
+
+/**
+ * Lưu ảnh bìa (ghi đè ảnh cũ) và tăng phiên bản trong một transaction. Trả về phiên bản mới,
+ * null nếu sách không có hoặc không phải của người này. Xóa sách thì trigger xóa luôn ảnh bìa.
+ */
+export async function setCover(db: D1Database, userId: string, bookId: string, bytes: Uint8Array, nowMs: number): Promise<number | null> {
+  const blob = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const [, upd] = await db.batch<{ cover: number }>([
+    db
+      .prepare(
+        `INSERT INTO covers (book_id, user_id, bytes, updated)
+         SELECT ?1, ?2, ?3, ?4 WHERE EXISTS (SELECT 1 FROM books WHERE id = ?1 AND user_id = ?2)
+         ON CONFLICT(book_id) DO UPDATE SET bytes = excluded.bytes, updated = excluded.updated`,
+      )
+      .bind(bookId, userId, blob, nowMs),
+    db.prepare("UPDATE books SET cover = cover + 1 WHERE id = ? AND user_id = ? RETURNING cover").bind(bookId, userId),
+  ]);
+  return upd.results[0]?.cover ?? null;
+}
+
+export async function getCover(db: D1Database, userId: string, bookId: string): Promise<Uint8Array<ArrayBuffer> | null> {
+  const r = await db.prepare("SELECT bytes FROM covers WHERE book_id = ? AND user_id = ?").bind(bookId, userId).first<{ bytes: ArrayBuffer | number[] }>();
+  // D1 trả cột BLOB dạng mảng số (bản thật) hoặc ArrayBuffer (tùy phiên bản) — cả hai đều dựng Uint8Array được
+  return r?.bytes ? new Uint8Array(r.bytes as ArrayLike<number>) : null;
 }
 
 export interface Usage {

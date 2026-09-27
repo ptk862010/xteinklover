@@ -504,10 +504,11 @@
     $("#empty").hidden = books.length > 0;
     $("#books").innerHTML = list.map((b) => {
       const h = hue(b.title);
+      const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
       return `<article class="book" data-id="${esc(b.id)}">
-        <div class="cover" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))"><span>${esc(b.title)}</span></div>
+        <div class="cover${img ? " has-img" : ""}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span></div>
         <div class="meta"><b title="${esc(b.title)}">${esc(b.title)}</b>${esc(b.author || "—")} · ${fmtSize(b.size)} · ${fmtDate(b.added)}</div>
-        <div class="acts"><a class="btn" href="/books/${encodeURIComponent(b.id)}.epub">${L("Tải", "Download")}</a><button class="btn danger" data-del="${esc(b.id)}" type="button">${L("Xóa", "Delete")}</button></div>
+        <div class="acts"><a class="btn" href="/books/${encodeURIComponent(b.id)}.epub">${L("Tải", "Download")}</a><button class="btn" data-cover="${esc(b.id)}" type="button">${L("Bìa", "Cover")}</button><button class="btn danger" data-del="${esc(b.id)}" type="button">${L("Xóa", "Delete")}</button></div>
       </article>`;
     }).join("");
   }
@@ -550,6 +551,103 @@
     return j.book;
   }
 
+  // ── Bìa sách (chỉ trên kệ web) ──
+  async function saveCover(id, thumb) {
+    const j = await api("/api/books/" + encodeURIComponent(id) + "/cover", { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: new Blob([thumb]) });
+    const b = books.find((x) => x.id === id);
+    if (b) { b.cover = j.cover; render(); }
+  }
+
+  /** Ảnh ứng viên (Google Books / Open Library) → tải qua máy chủ (CORS) → thu nhỏ → lưu. */
+  async function applyCandidate(id, cand) {
+    let r;
+    try { r = await fetch(location.origin + "/api/fetch-image?url=" + encodeURIComponent(cand.image), { credentials: "same-origin" }); }
+    catch { throw new Error(L("Mất kết nối mạng, thử lại", "Network connection lost, please try again")); }
+    if (!r.ok) {
+      let m = "";
+      try { m = (await r.json()).error; } catch { /* không phải JSON */ }
+      throw new Error(m || L(`Lỗi ${r.status}`, `Error ${r.status}`));
+    }
+    const thumb = await (await converter()).makeThumb(await r.blob());
+    if (!thumb) throw new Error(L("Ảnh này hỏng, chọn bìa khác", "This image is broken, pick another cover"));
+    await saveCover(id, thumb);
+  }
+
+  /** Sau khi gửi: bìa trong sách thì dùng luôn; không có mà sách có ISBN thì lấy bìa đúng bản in đó. Lỗi thì thôi. */
+  async function attachCover(book, res) {
+    const my = epoch;
+    try {
+      if (res.thumb) return await saveCover(book.id, res.thumb);
+      if (!res.isbn) return;
+      const found = await api("/api/covers/search?" + new URLSearchParams({ isbn: res.isbn, lang: res.lang || "" }));
+      if (my === epoch && found.byIsbn && found.items[0]) await applyCandidate(book.id, found.items[0]);
+    } catch { /* bìa không quan trọng bằng sách */ }
+  }
+
+  let coverFor = null;
+  let coverCands = [];
+  function openCover(id) {
+    const b = books.find((x) => x.id === id);
+    if (!b) return;
+    coverFor = id;
+    $("#coverBook").textContent = b.title + (b.author ? " — " + b.author : "");
+    $("#coverTitleIn").value = b.title;
+    $("#coverAuthorIn").value = b.author || "";
+    $("#coverResults").innerHTML = "";
+    $("#coverStatus").textContent = "";
+    openSheet("coverSheet");
+    searchCovers();
+  }
+
+  async function searchCovers() {
+    const id = coverFor;
+    const title = $("#coverTitleIn").value.trim();
+    const author = $("#coverAuthorIn").value.trim();
+    if (!title) { $("#coverStatus").textContent = L("Nhập tên sách để tìm", "Enter a title to search"); return; }
+    $("#coverStatus").textContent = L("Đang tìm…", "Searching…");
+    $("#coverResults").innerHTML = "";
+    try {
+      const j = await api("/api/covers/search?" + new URLSearchParams({ title, author, lang: lang === "en" ? "" : "vi" }));
+      if (id !== coverFor) return;
+      coverCands = j.items;
+      $("#coverStatus").textContent = j.items.length
+        ? L(`Tìm được ${j.items.length} bìa. Chưa đúng thì thử bỏ tác giả, hoặc tìm bằng tên gốc.`, `Found ${j.items.length} covers. Not it? Try without the author, or the original title.`)
+        : L("Không tìm thấy bìa nào. Thử bỏ tác giả, hoặc tìm bằng tên gốc (tiếng Anh).", "No covers found. Try without the author, or the original title.");
+      $("#coverResults").innerHTML = j.items.map((c, i) => `<button class="cand" type="button" data-cand="${i}" title="${esc(c.title)}">
+        <img src="${esc(c.thumb)}" alt="" loading="lazy">
+        <span class="t">${esc(c.title)}</span>
+        <span class="s">${esc([c.publisher, c.year, (c.lang || "").toUpperCase()].filter(Boolean).join(" · "))}</span>
+      </button>`).join("");
+    } catch (e) { if (id === coverFor) $("#coverStatus").textContent = tr(e.message); }
+  }
+
+  $("#coverForm").addEventListener("submit", (e) => { e.preventDefault(); busy($("#coverSearchBtn"), L("Đang tìm…", "Searching…"), searchCovers); });
+  // Ảnh không tải được (Google / Open Library lỗi) thì bỏ luôn ô đó
+  $("#coverResults").addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.closest(".cand")?.remove(); }, true);
+  $("#coverResults").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-cand]");
+    const cand = btn && coverCands[Number(btn.dataset.cand)];
+    if (!cand || !coverFor || btn.disabled) return;
+    const id = coverFor;
+    const all = document.querySelectorAll(".cand");
+    all.forEach((x) => (x.disabled = true));
+    $("#coverStatus").textContent = L("Đang lưu bìa…", "Saving cover…");
+    try { await applyCandidate(id, cand); closeSheets(); toast(L("Đã đổi bìa", "Cover updated")); }
+    catch (err) { $("#coverStatus").textContent = L("Lỗi: ", "Error: ") + tr(err.message); }
+    finally { all.forEach((x) => (x.disabled = false)); }
+  });
+  $("#coverFromFile").addEventListener("click", (e) => busy(e.currentTarget, L("Đang đọc file…", "Reading file…"), async () => {
+    const id = coverFor;
+    try {
+      const r = await fetch(location.origin + "/books/" + encodeURIComponent(id) + ".epub", { credentials: "same-origin" });
+      if (!r.ok) throw new Error(L(`Không tải được sách (lỗi ${r.status})`, `Couldn't download the book (error ${r.status})`));
+      const meta = await (await converter()).readBook(new Uint8Array(await r.arrayBuffer()));
+      if (!meta.thumb) { $("#coverStatus").textContent = L("File này không có ảnh bìa. Tìm trên mạng ở dưới nhé.", "This file has no cover image. Search online below."); return; }
+      await saveCover(id, meta.thumb);
+      if (id === coverFor) { closeSheets(); toast(L("Đã lấy bìa trong file", "Cover taken from the file")); }
+    } catch (err) { $("#coverStatus").textContent = L("Lỗi: ", "Error: ") + tr(err.message); }
+  }));
+
   /** Bộ chuyển đổi là ES module (nạp sau app.js): đợi tới khi sẵn sàng. */
   async function converter() {
     for (let i = 0; i < 100 && !window.XteinkConvert; i++) await new Promise((r) => setTimeout(r, 100));
@@ -580,6 +678,7 @@
         q.done(res.note ? L(`Đã lên kệ (${res.note})`, `Added to shelf (${tr(res.note)})`) : L("Đã lên kệ", "Added to shelf"));
         ok++;
         books.unshift(book); render();
+        attachCover(book, res);
       } catch (e) { q.fail(L("Lỗi: ", "Error: ") + tr(e.message)); }
     }
     if (my === epoch) refreshUsage();
@@ -690,6 +789,8 @@
 
   $("#search").addEventListener("input", render);
   $("#books").addEventListener("click", async (e) => {
+    const cov = e.target.closest("[data-cover]");
+    if (cov) return openCover(cov.dataset.cover);
     const btn = e.target.closest("[data-del]");
     if (!btn || btn.dataset.busy) return;
     if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = L("Chắc chứ?", "Sure?"); setTimeout(() => { btn.dataset.armed = ""; if (!btn.dataset.busy) btn.textContent = L("Xóa", "Delete"); }, 2500); return; }

@@ -1,3 +1,6 @@
 # Invite code needed to create an account on your copy. Pick any word and keep it to yourself.
 # Mã mời để tạo tài khoản trên bản của bạn: tự đặt một từ bất kỳ, giữ cho riêng mình.
 SIGNUP_CODE=
+# Không bắt buộc: khóa Google Books API để tìm bìa sách (thiếu thì chỉ tìm trên Open Library).
+# Optional: Google Books API key for cover search (without it, only Open Library is searched).
+GOOGLE_BOOKS_KEY=

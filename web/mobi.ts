@@ -9,6 +9,8 @@ export interface BookResult {
   bytes: Uint8Array;
   title: string;
   author: string;
+  /** Bìa gốc (màu) cho kệ web; bìa trong EPUB là bản thang xám cho e-ink */
+  cover?: Blob;
 }
 
 /**
@@ -59,8 +61,9 @@ export async function convertMobi(file: File, opts: { title?: string; author?: s
 
   // Bìa
   let coverHref: string | undefined;
+  let cover: Blob | undefined;
   try {
-    const cover: Blob | undefined = await book.getCover?.();
+    cover = await book.getCover?.();
     if (cover) {
       const jpg = await blobToEinkJpeg(cover);
       if (jpg) {
@@ -105,5 +108,5 @@ export async function convertMobi(file: File, opts: { title?: string; author?: s
     identifier: `urn:xteinklover:mobi:${meta.identifier || Date.now().toString(36)}`,
     date: new Date().toISOString(),
   });
-  return { bytes, title, author };
+  return { bytes, title, author, cover };
 }

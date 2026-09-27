@@ -88,6 +88,16 @@ Trên Android, cài trang như app (menu Chrome → *Thêm vào màn hình chín
 
 Đăng ký tài khoản từ máy đọc bị tắt (tài khoản chỉ tạo trên web). Đổi mật khẩu thì mọi mã đồng bộ bị thu hồi, trừ khi tích ô "Giữ mã đồng bộ của các máy đọc". Tài khoản có mã được dùng trong 90 ngày không bị coi là bỏ hoang.
 
+### Bìa sách trên kệ
+
+Gửi EPUB, MOBI, PDF, CBZ có bìa thì kệ web hiện luôn bìa thật. Tên và tác giả của EPUB lấy trong sách chứ không lấy tên file. Ảnh bìa thu nhỏ (~30 KB) lưu trong D1, không tốn lượt ghi KV. Sách không có bìa mà có ISBN thì tự lấy bìa đúng bản in đó. Còn lại bấm **Bìa** ở từng cuốn: lấy bìa có sẵn trong file, hoặc tìm trên Google Books và Open Library rồi tự chọn (không tự gán, vì sách tiếng Việt hay bị khớp nhầm sang sách khác cùng tác giả). Bìa chỉ hiện trên kệ web, file gửi xuống máy không đổi.
+
+Tìm trên Google Books cần khóa API (miễn phí, khoảng 1.000 lượt/ngày; không có khóa thì chỉ tìm trên Open Library): Google Cloud Console → **APIs & Services → Library → Books API → Enable** → **Credentials → Create credentials → API key**, giới hạn khóa chỉ cho Books API.
+
+```bash
+npx wrangler secret put GOOGLE_BOOKS_KEY
+```
+
 ### Gửi từ Obsidian
 
 Plugin Obsidian **Xteink Sync** gửi note thẳng lên kệ, từ bất cứ đâu: trên web vào **Tài khoản → Mã cho ứng dụng → Tạo mã**, dán mã vào cài đặt plugin (Gửi tới: Kệ Xteink Lover). Mã chỉ xem, gửi, xóa được sách; tối đa 5 mã, thu hồi riêng từng mã.
@@ -126,6 +136,7 @@ Cột "Mặc định" là giá trị khi không khai báo biến. `wrangler.toml
 | `MAX_SYNC_NEW_PER_DAY` | 300 | Đồng bộ tiến độ: số sách **mới** tối đa mỗi người mỗi ngày (0 = không giới hạn) |
 | `MAX_SYNC_WRITES_PER_DAY` | 2000 | Đồng bộ tiến độ: lượt ghi tối đa mỗi người mỗi ngày; quá thì máy nhận 503 (tự gửi lại sau), không 401 |
 | `MAX_SYNC_WRITES_PER_DAY_TOTAL` | 15000 | Đồng bộ tiến độ: lượt ghi tối đa cả hệ thống mỗi ngày (giữ phần quota D1 cho kệ sách) |
+| `GOOGLE_BOOKS_KEY` (secret) | trống | Khóa Google Books API để tìm bìa sách. Không đặt thì chỉ tìm trên Open Library |
 
 Ngày tính theo UTC, reset lúc 7:00 sáng giờ Việt Nam, trùng giờ Cloudflare reset quota free.
 

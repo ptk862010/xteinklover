@@ -74,6 +74,18 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 .cover { aspect-ratio: 2 / 3; display: flex; align-items: flex-end; padding: 12px; color: #fff; font-family: Fraunces, serif; font-weight: 700; font-size: 1.05rem; line-height: 1.15; text-shadow: 0 1px 2px rgba(0,0,0,.35); position: relative; }
 .cover::after { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,.25); }
 .cover span { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cover.has-img::after, .cover.has-img span { display: none; }
+.cover-book { margin: 0 0 12px; font-weight: 600; }
+.cover-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+@media (max-width: 480px) { .cover-form { grid-template-columns: 1fr; } }
+.cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; margin: 10px 0 14px; }
+.cand { display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.cand:hover, .cand:focus-visible { border-color: var(--accent); }
+.cand:disabled { opacity: .5; cursor: wait; }
+.cand img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 6px; background: var(--line); }
+.cand .t { font-size: .78rem; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cand .s { font-size: .72rem; color: var(--ink2); line-height: 1.25; }
 .meta { padding: 10px 12px 8px; font-size: .82rem; color: var(--ink2); line-height: 1.35; }
 .meta b { display: block; color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acts { display: flex; gap: 6px; padding: 0 10px 10px; margin-top: auto; }

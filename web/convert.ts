@@ -1,5 +1,7 @@
 import { marked } from "marked";
+import { makeThumb, readEpub } from "./cover";
 import { EpubInput, buildEpub, escapeXml } from "./epub";
+import { readEpubMeta } from "./epubmeta";
 import { cleanTree, serialize } from "./html";
 import type { Progress } from "./images";
 import type { PdfMode } from "./pdf";
@@ -10,6 +12,11 @@ export interface ConvertResult {
   author: string;
   /** Ghi chú cho người dùng, vd "PDF → ảnh trang, 120 trang" */
   note?: string;
+  /** Ảnh bìa thu nhỏ (JPEG) cho kệ web, lấy từ bìa trong sách */
+  thumb?: Uint8Array;
+  /** ISBN trong metadata sách (có thì tìm được đúng bìa bản in đó) */
+  isbn?: string;
+  lang?: string;
 }
 
 export interface ConvertOptions {
@@ -92,6 +99,17 @@ async function convertText(file: File, ext: string, name: string, opts: ConvertO
  * MOBI/PDF/CBZ nạp thư viện riêng khi cần (PDF.js ~3 MB chỉ tải lúc có người gửi PDF).
  */
 export async function convertFile(file: File, opts: ConvertOptions = {}): Promise<ConvertResult> {
+  const r = await convertOnly(file, opts);
+  // Bìa, ISBN đọc lại từ EPUB vừa có (mọi bộ chuyển đổi đều nhúng bìa nếu sách có). Lỗi thì bỏ qua, vẫn gửi sách.
+  try {
+    const meta = await readEpub(r.bytes, r.cover);
+    return { bytes: r.bytes, title: r.title, author: r.author, note: r.note, thumb: meta.thumb, isbn: meta.isbn, lang: meta.lang };
+  } catch {
+    return { bytes: r.bytes, title: r.title, author: r.author, note: r.note };
+  }
+}
+
+async function convertOnly(file: File, opts: ConvertOptions): Promise<ConvertResult & { cover?: Blob }> {
   const name = file.name.replace(/\.[^.]+$/, "");
   const ext = (file.name.split(".").pop() ?? "").toLowerCase();
   if (!ACCEPT_EXTS.includes(ext)) {
@@ -102,7 +120,9 @@ export async function convertFile(file: File, opts: ConvertOptions = {}): Promis
     const bytes = new Uint8Array(await file.arrayBuffer());
     const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
     if (!isZip) throw new Error("File .epub hỏng (không phải ZIP)");
-    return { bytes, title: opts.title || name, author: opts.author ?? "" };
+    // Tên, tác giả trong sách đáng tin hơn tên file ("Hoa-than_z-lib.epub")
+    const meta = readEpubMeta(bytes);
+    return { bytes, title: opts.title || meta.title || name, author: opts.author || meta.author || "" };
   }
   if (MOBI_EXTS.includes(ext)) {
     const { convertMobi } = await import("./mobi");
@@ -127,6 +147,11 @@ export async function probePdf(file: File) {
   return probePdf(file);
 }
 
+/** Sách đã có trên kệ: đọc lại metadata + bìa từ file EPUB tải về. */
+export async function readBook(bytes: Uint8Array) {
+  return readEpub(bytes);
+}
+
 /** Link bài viết → EPUB (Readability chỉ tải khi dùng). */
 export async function clipUrl(url: string, onProgress?: (msg: string) => void) {
   const m = await import("./clip");
@@ -146,8 +171,10 @@ declare global {
       probePdf: typeof probePdf;
       clipUrl: typeof clipUrl;
       htmlToMarkdown: typeof htmlToMarkdown;
+      makeThumb: typeof makeThumb;
+      readBook: typeof readBook;
       accept: string[];
     };
   }
 }
-window.XteinkConvert = { convertFile, probePdf, clipUrl, htmlToMarkdown, accept: ACCEPT_EXTS };
+window.XteinkConvert = { convertFile, probePdf, clipUrl, htmlToMarkdown, makeThumb, readBook, accept: ACCEPT_EXTS };

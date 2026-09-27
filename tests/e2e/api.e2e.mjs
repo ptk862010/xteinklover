@@ -221,9 +221,37 @@ test("tạo khóa OPDS mới: khóa cũ hết hiệu lực", async () => {
   opdsKeyA = r.data.opdsKey;
 });
 
+test("bìa sách: chỉ nhận JPEG nhỏ, lưu vào D1, tăng phiên bản; người khác không xem/đổi được", async () => {
+  const jpeg = new Uint8Array(3000);
+  jpeg.set([0xff, 0xd8, 0xff, 0xe0]);
+  jpeg[2999] = 7;
+  const put = (c, id, body) => c.req(`/api/books/${id}/cover`, { method: "PUT", body, headers: { "Content-Type": "image/jpeg" } });
+  assert.equal((await A.req(`/api/books/${bookA}/cover`)).status, 404);
+  assert.equal((await put(A, bookA, new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).status, 415);
+  assert.equal((await put(A, bookA, new Uint8Array(300 * 1024).fill(0xff))).status, 413);
+  assert.equal((await put(B, bookA, jpeg)).status, 404, "không đổi được bìa sách người khác");
+  const r1 = await put(A, bookA, jpeg);
+  assert.equal(r1.status, 200, JSON.stringify(r1.data));
+  assert.equal(r1.data.cover, 1);
+  assert.equal((await put(A, bookA, jpeg)).data.cover, 2);
+  const list = await A.req("/api/books");
+  assert.equal(list.data.find((b) => b.id === bookA).cover, 2);
+  const got = await fetch(`${BASE}/api/books/${bookA}/cover?v=2`, { headers: { Cookie: A.cookie } });
+  assert.equal(got.status, 200);
+  assert.equal(got.headers.get("content-type"), "image/jpeg");
+  assert.match(got.headers.get("cache-control") || "", /immutable/);
+  assert.deepEqual(new Uint8Array(await got.arrayBuffer()), jpeg);
+  assert.equal((await B.req(`/api/books/${bookA}/cover`)).status, 404);
+  assert.equal((await client().req(`/api/books/${bookA}/cover`)).status, 401);
+  // Tìm bìa: thiếu tên thì 400 (không gọi ra mạng trong test)
+  assert.equal((await A.req("/api/covers/search?title=")).status, 400);
+  assert.equal((await client().req("/api/covers/search?title=abc")).status, 401);
+});
+
 test("xóa sách", async () => {
   assert.equal((await A.req(`/api/books/${bookA}`, { method: "DELETE" })).status, 200);
   assert.equal((await A.req("/api/books")).data.length, 0);
+  assert.equal((await A.req(`/api/books/${bookA}/cover`)).status, 404, "xóa sách thì mất bìa");
   assert.equal((await fetch(`${BASE}/books/${bookA}.epub`, { headers: basic(U, opdsKeyA) })).status, 404);
   const me = await A.req("/api/me");
   assert.equal(me.data.usage.uploadsToday, 1, "xóa không trả lại lượt gửi");

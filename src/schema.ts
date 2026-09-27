@@ -146,4 +146,17 @@ export const MIGRATIONS: string[][] = [
     `CREATE TRIGGER IF NOT EXISTS sync_count_del AFTER DELETE ON sync_progress
       BEGIN UPDATE sync_counts SET n = MAX(n - 1, 0) WHERE user_id = OLD.user_id; END`,
   ],
+  // v5 — ảnh bìa trên kệ web: JPEG thu nhỏ trong D1 (không tốn lượt ghi KV). books.cover = phiên bản ảnh (0 = chưa có).
+  // Xóa sách (xóa lẻ hay xóa cả tài khoản) thì trigger xóa ảnh theo.
+  [
+    `ALTER TABLE books ADD COLUMN cover INTEGER NOT NULL DEFAULT 0`,
+    `CREATE TABLE IF NOT EXISTS covers (
+      book_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      bytes BLOB NOT NULL,
+      updated INTEGER NOT NULL
+    )`,
+    `CREATE TRIGGER IF NOT EXISTS books_cover_del AFTER DELETE ON books
+      BEGIN DELETE FROM covers WHERE book_id = OLD.id; END`,
+  ],
 ];

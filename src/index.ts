@@ -3,6 +3,7 @@ import { unauthorized, userFromBasic, userFromSession } from "./auth";
 import * as books from "./books";
 import * as clip from "./clip";
 import * as kosync from "./kosync";
+import * as covers from "./covers";
 import * as oauth from "./oauth";
 import * as tokens from "./tokens";
 import { ensureSchema } from "./db";
@@ -138,6 +139,11 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   }
   const one = path.match(new RegExp(`^/api/books/${BOOK_ID}$`));
   if (one && method === "DELETE") return books.remove(env, auth.user, one[1], ctx);
+
+  if (path === "/api/covers/search" && method === "GET") return covers.search(env, url, auth.user);
+  const cov = path.match(new RegExp(`^/api/books/${BOOK_ID}/cover$`));
+  if (cov && method === "GET") return covers.get(env, auth.user, cov[1]);
+  if (cov && method === "PUT") return covers.put(req, env, auth.user, cov[1]);
 
   return error(404, "Không có");
 }
