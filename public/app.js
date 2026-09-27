@@ -522,7 +522,7 @@
     const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
     const p = pct(b);
     const status = [b.onDevice && b.fetched ? L("✓ đã về máy", "✓ on reader") : "", p !== null ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
-    return `<article class="book" data-id="${id}">
+    return `<article class="book" data-id="${id}" draggable="true" data-drag="${id}" data-from="${esc(dragFrom())}">
       <div class="cover${img ? " has-img" : ""}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
         <button class="dev${b.onDevice ? " on" : ""}" type="button" data-dev="${id}" aria-pressed="${b.onDevice ? "true" : "false"}" title="${esc(L("Bật: máy đọc thấy cuốn này trong kệ OPDS", "On: your e-reader sees this book on its OPDS shelf"))}">${b.onDevice ? "⚡ " + L("Lên máy", "On device") : "＋ " + L("Lên máy", "Device")}</button>
         ${p !== null ? `<div class="prog" aria-hidden="true"><i style="width:${p}%"></i></div>` : ""}</div>
@@ -554,20 +554,21 @@
   }
 
   /** Một cuốn đứng trên tầng: chỉ bìa (như kệ thật), bấm vào để mở Sửa. */
-  function spine(b) {
+  function spine(b, from = "") {
     const h = hue(b.title);
     const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
     const p = pct(b);
     const tip = [b.title, b.author, b.onDevice ? L("⚡ Lên máy", "⚡ On device") : "", b.onDevice && b.fetched ? L("đã về máy", "on reader") : "", p !== null ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
-    return `<button class="spine cover${img ? " has-img" : ""}" type="button" data-open="${esc(b.id)}" title="${esc(tip)}" aria-label="${esc(tip)}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
-      ${b.onDevice ? `<i class="bolt" aria-hidden="true">⚡</i>` : ""}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</button>`;
+    // div role=button (không dùng <button>): Firefox không cho kéo phần tử button
+    return `<div class="spine cover${img ? " has-img" : ""}" role="button" tabindex="0" draggable="true" data-drag="${esc(b.id)}" data-from="${esc(from)}" data-open="${esc(b.id)}" title="${esc(tip)}" aria-label="${esc(tip)}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
+      ${b.onDevice ? `<i class="bolt" aria-hidden="true">⚡</i>` : ""}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</div>`;
   }
 
   /** Cả kệ: tầng Lên máy trên cùng, rồi các tầng tự tạo. Sách chưa phân loại không lên kệ, chỉ có dòng nhắc. */
   /** Tủ trưng bày: tầng ⚡ Lên máy trên cùng, rồi các tầng tự tạo; tên tầng khắc trên biển đồng ở mép ván. */
   function renderCase() {
-    const tier = (key, name, list, empty) => `<section class="tier">
-      <div class="tier-row">${list.length ? list.map(spine).join("") : `<p class="tier-empty">${esc(empty)}</p>`}</div>
+    const tier = (key, name, list, empty) => `<section class="tier" data-drop="${esc(key)}">
+      <div class="tier-row">${list.length ? list.map((b) => spine(b, key)).join("") : `<p class="tier-empty">${esc(empty)}</p>`}</div>
       <div class="plank"><button class="plate" type="button" data-view="${esc(key)}">${esc(name)} · ${list.length}</button></div></section>`;
     const hint = shelves.length ? "" : `<p class="case-hint">${esc(L("Bấm “＋ Tầng” để đóng thêm tầng (Văn học, Trinh thám…), rồi mở từng cuốn để xếp lên.", "Tap “＋ Shelf” to add shelves (Fiction, Mystery…), then open a book to place it."))}</p>`;
     $("#books").innerHTML = `<div class="case">`
@@ -761,6 +762,83 @@
     } catch (err) { $("#bfStatus").textContent = tr(err.message); }
   }));
   $("#bfNewShelf").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#bfAddShelf").click(); } });
+
+  // ── Kéo thả: kéo sách thả vào thẻ tầng / tầng trên tủ (máy tính; điện thoại dùng hộp Sửa) ──
+  const DRAG_TYPE = "text/x-xl-book";
+  /** Cuốn trong lưới đang đứng ở đâu (để kéo sang tầng khác là chuyển chứ không nhân đôi) */
+  function dragFrom() { return view === "device" || view.startsWith("s:") ? view : ""; }
+  const shelfName = (id) => shelves.find((s) => s.id === id)?.name ?? "";
+  const dropKey = (el) => el?.dataset.drop || (el?.matches?.("#shelfBar [data-view]") && ["device", "unsorted"].concat(shelves.map((s) => "s:" + s.id)).includes(el.dataset.view) ? el.dataset.view : "");
+  const dropTarget = (e) => e.target.closest?.("[data-drop], #shelfBar [data-view]");
+  let dragging = null; // { id, from }
+
+  document.addEventListener("dragstart", (e) => {
+    const el = e.target.closest?.("[data-drag]");
+    if (!el) return;
+    dragging = { id: el.dataset.drag, from: el.dataset.from || "" };
+    e.dataTransfer.setData(DRAG_TYPE, dragging.id);
+    e.dataTransfer.effectAllowed = "move";
+    el.classList.add("is-dragging");
+    document.body.classList.add("dragging-book");
+  });
+  document.addEventListener("dragend", (e) => {
+    e.target.closest?.("[data-drag]")?.classList.remove("is-dragging");
+    document.body.classList.remove("dragging-book");
+    document.querySelectorAll(".drop-over").forEach((x) => x.classList.remove("drop-over"));
+    dragging = null;
+  });
+  document.addEventListener("dragover", (e) => {
+    if (!dragging || ![...e.dataTransfer.types].includes(DRAG_TYPE)) return;
+    const t = dropTarget(e);
+    if (!t || !dropKey(t) || dropKey(t) === dragging.from) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".drop-over").forEach((x) => x !== t && x.classList.remove("drop-over"));
+    t.classList.add("drop-over");
+  });
+  document.addEventListener("dragleave", (e) => {
+    const t = dropTarget(e);
+    if (t && !t.contains(e.relatedTarget)) t.classList.remove("drop-over");
+  });
+  document.addEventListener("drop", (e) => {
+    if (!dragging || ![...e.dataTransfer.types].includes(DRAG_TYPE)) return;
+    const t = dropTarget(e);
+    const key = t && dropKey(t);
+    if (!key) return;
+    e.preventDefault();
+    t.classList.remove("drop-over");
+    const { id, from } = dragging;
+    dropBook(id, from, key);
+  });
+
+  /** Thả sách: vào tầng (chuyển nếu kéo từ tầng khác), vào Lên máy, hoặc về Chưa phân loại (gỡ khỏi chỗ vừa rời). */
+  async function dropBook(id, from, key) {
+    const b = books.find((x) => x.id === id);
+    if (!b || key === from) return;
+    const fromShelf = from.startsWith("s:") ? from.slice(2) : "";
+    let patch, msg;
+    if (key === "device") {
+      if (b.onDevice) return toast(L("Cuốn này đã Lên máy rồi", "Already on device"));
+      patch = { onDevice: true };
+      msg = L(`Đã cho “${b.title}” lên máy`, `“${b.title}” is now on device`);
+    } else if (key === "unsorted") {
+      if (from === "device") { patch = { onDevice: false }; msg = L(`Đã bỏ “${b.title}” khỏi máy`, `Removed “${b.title}” from device`); }
+      else if (fromShelf) { patch = { shelves: shelfOf(b).filter((x) => x !== fromShelf) }; msg = L(`Đã gỡ “${b.title}” khỏi tầng ${shelfName(fromShelf)}`, `Took “${b.title}” off ${shelfName(fromShelf)}`); }
+      else return toast(L("Kéo từ một tầng thả vào đây để gỡ sách khỏi tầng đó", "Drag from a shelf to here to take a book off it"));
+    } else {
+      const to = key.slice(2);
+      if (shelfOf(b).includes(to) && !fromShelf) return toast(L(`“${b.title}” đã ở tầng ${shelfName(to)}`, `“${b.title}” is already on ${shelfName(to)}`));
+      patch = { shelves: [...new Set([...shelfOf(b).filter((x) => x !== fromShelf), to])] };
+      msg = fromShelf ? L(`Đã chuyển “${b.title}” sang ${shelfName(to)}`, `Moved “${b.title}” to ${shelfName(to)}`) : L(`Đã xếp “${b.title}” vào ${shelfName(to)}`, `Put “${b.title}” on ${shelfName(to)}`);
+    }
+    try {
+      await api("/api/books/" + encodeURIComponent(id), { method: "PATCH", json: patch });
+      if (patch.onDevice !== undefined) b.onDevice = patch.onDevice;
+      if (patch.shelves) b.shelves = patch.shelves;
+      render();
+      toast(msg);
+    } catch (err) { toast(tr(err.message), true); }
+  }
 
   // Thanh tầng: chọn cách xem, tạo / đổi tên / xóa tầng
   $("#shelfBar").addEventListener("click", (e) => {
@@ -1011,6 +1089,11 @@
     } catch (err) { delete btn.dataset.busy; toast(tr(err.message), true); }
   }
 
+  // Bìa trên tủ là div role=button: Enter / Space cũng mở
+  $("#books").addEventListener("keydown", (e) => {
+    const el = e.target.closest?.("[data-open]");
+    if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openBook(el.dataset.open); }
+  });
   $("#search").addEventListener("input", render);
   $("#books").addEventListener("click", async (e) => {
     const edit = e.target.closest("[data-edit], [data-open]");
