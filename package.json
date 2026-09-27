@@ -1,6 +1,6 @@
 {
   "name": "xteinklover",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Send to Xteink: drop a file, get an EPUB in your personal OPDS catalog, pull it on the reader from anywhere",
   "scripts": {
