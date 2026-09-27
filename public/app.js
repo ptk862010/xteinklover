@@ -516,8 +516,8 @@
     render();
   }
   const shelfOf = (b) => b.shelves || [];
-  /** Còn thiếu tầng, tác giả hoặc bìa → nằm ở "Chưa phân loại" */
-  const isUnsorted = (b) => !shelfOf(b).length || !b.author || !b.cover;
+  /** Chưa lên tầng nào → "Chưa phân loại". Máy đọc (OPDS) chỉ thấy sách đã lên tầng. */
+  const isUnsorted = (b) => !shelfOf(b).length;
   const pct = (b) => (typeof b.progress === "number" ? Math.round(b.progress * 100) : null);
 
   function card(b) {
@@ -525,10 +525,9 @@
     const id = esc(b.id);
     const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy" draggable="false">` : "";
     const p = pct(b);
-    const status = [b.finished ? L(`✓ đọc xong ${fmtDay(b.finished)}`, `✓ finished ${fmtDay(b.finished)}`) : "", b.onDevice && b.fetched ? L("✓ đã về máy", "✓ on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
+    const status = [b.finished ? L(`✓ đọc xong ${fmtDay(b.finished)}`, `✓ finished ${fmtDay(b.finished)}`) : "", b.fetched ? L("✓ đã về máy", "✓ on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
     return `<article class="book" data-id="${id}" draggable="true" data-drag="${id}" data-from="${esc(dragFrom())}">
       <div class="cover${img ? " has-img" : ""}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
-        <button class="dev${b.onDevice ? " on" : ""}" type="button" data-dev="${id}" aria-pressed="${b.onDevice ? "true" : "false"}" title="${esc(L("Bật: máy đọc thấy cuốn này trong kệ OPDS", "On: your e-reader sees this book on its OPDS shelf"))}">${b.onDevice ? "⚡ " + L("Lên máy", "On device") : "＋ " + L("Lên máy", "Device")}</button>
         ${p !== null ? `<div class="prog" aria-hidden="true"><i style="width:${p}%"></i></div>` : ""}</div>
       <div class="meta"><b title="${esc(b.title)}">${esc(b.title)}</b>${esc(b.author || "—")} · ${fmtSize(b.size)} · ${fmtDate(b.added)}${status ? `<span class="st">${esc(status)}</span>` : ""}</div>
       <div class="acts"><a class="btn" href="/books/${encodeURIComponent(b.id)}.epub">${L("Tải", "Download")}</a><button class="btn" data-edit="${id}" type="button">${L("Sửa", "Edit")}</button><button class="btn danger" data-del="${id}" type="button">${L("Xóa", "Delete")}</button></div>
@@ -540,7 +539,6 @@
     const chip = (v, label, n, cls = "") => `<button class="chip${cls}${view === v ? " on" : ""}" type="button" data-view="${esc(v)}" aria-pressed="${view === v}">${esc(label)}${n === undefined ? "" : ` <span>${n}</span>`}</button>`;
     $("#shelfBar").innerHTML = [
       `<span class="seg">${chip("shelf", L("Kệ sách", "Bookcase"), undefined, " big")}${chip("unsorted", L("Chưa phân loại", "Unsorted"), books.filter(isUnsorted).length, " big")}</span>`,
-      chip("device", L("⚡ Lên máy", "⚡ On device"), books.filter((b) => b.onDevice).length),
       ...shelves.map((s) => chip("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)).length)),
       chip("authors", L("Theo tác giả", "By author")),
       `<button class="chip add" type="button" data-newshelf>＋ ${L("Tầng", "Shelf")}</button>`,
@@ -563,10 +561,10 @@
     const h = hue(b.title);
     const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy" draggable="false">` : "";
     const p = pct(b);
-    const tip = [b.title, b.author, b.finished ? L(`đọc xong ${fmtDay(b.finished)}`, `finished ${fmtDay(b.finished)}`) : "", b.onDevice ? L("⚡ Lên máy", "⚡ On device") : "", b.onDevice && b.fetched ? L("đã về máy", "on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
+    const tip = [b.title, b.author, b.finished ? L(`đọc xong ${fmtDay(b.finished)}`, `finished ${fmtDay(b.finished)}`) : "", b.fetched ? L("đã về máy", "on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
     // div role=button (không dùng <button>): Firefox không cho kéo phần tử button
     return `<div class="spine cover${img ? " has-img" : ""}" role="button" tabindex="0" draggable="true" data-drag="${esc(b.id)}" data-from="${esc(from)}" data-open="${esc(b.id)}" title="${esc(tip)}" aria-label="${esc(tip)}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
-      ${b.finished ? `<i class="done" aria-hidden="true">✓</i>` : ""}${b.onDevice ? "" : `<i class="off" aria-hidden="true">${esc(L("Không lên máy", "Not on device"))}</i>`}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</div>`;
+      ${b.finished ? `<i class="done" aria-hidden="true">✓</i>` : ""}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</div>`;
   }
 
   /** Cả kệ: tầng Lên máy trên cùng, rồi các tầng tự tạo. Sách chưa phân loại không lên kệ, chỉ có dòng nhắc. */
@@ -585,7 +583,7 @@
     }
     $("#books").innerHTML = `<div class="case">`
       + shelves.map((s) => tier("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)), L("Tầng trống. Kéo sách vào đây, hoặc mở một cuốn và tích tầng này.", "Empty. Drag books here, or open a book and tick this shelf."))).join("")
-      + `</div>`;
+      + `</div><p class="case-hint">${esc(L("Máy đọc thấy đúng các tầng này: mỗi tầng là một thư mục trong kệ OPDS. Sách Chưa phân loại thì máy không thấy.", "Your e-reader sees exactly these shelves, each as a folder in its OPDS catalog. Unsorted books stay off the reader."))}</p>`;
   }
 
 
@@ -598,15 +596,14 @@
       $("#shelfBar").hidden = false;
       return renderCase();
     }
-    const inView = (b) => view === "device" ? b.onDevice : view === "unsorted" ? isUnsorted(b) : view.startsWith("s:") ? shelfOf(b).includes(view.slice(2)) : true;
+    const inView = (b) => view === "unsorted" ? isUnsorted(b) : view.startsWith("s:") ? shelfOf(b).includes(view.slice(2)) : true;
     const list = books.filter((b) => (!q || (b.title + " " + b.author).toLowerCase().includes(q)) && inView(b));
     $("#count").textContent = books.length ? L(`${books.length} cuốn`, `${books.length} ${books.length === 1 ? "book" : "books"}`) : "";
     $("#empty").hidden = books.length > 0;
     $("#shelfBar").hidden = books.length === 0;
     if (!books.length) { $("#books").innerHTML = ""; return; }
     if (!list.length) {
-      const msg = view === "unsorted" && !q ? L("Kệ gọn gàng: cuốn nào cũng đã có tầng, tác giả và bìa.", "All tidy: every book has a shelf, an author and a cover.")
-        : view === "device" && !q ? L("Chưa có cuốn nào Lên máy. Bấm “＋ Lên máy” trên bìa để máy đọc thấy cuốn đó.", "Nothing on your device yet. Tap “＋ Device” on a cover so your e-reader sees it.")
+      const msg = view === "unsorted" && !q ? L("Kệ gọn gàng: cuốn nào cũng đã lên tầng.", "All tidy: every book is on a shelf.")
         : L("Không có cuốn nào ở đây.", "No books here.");
       $("#books").innerHTML = `<p class="empty-view">${esc(msg)}</p>`;
       return;
@@ -708,7 +705,6 @@
     $("#bfTitle").value = b.title;
     $("#bfAuthor").value = b.author || "";
     $("#bfIsbn").value = b.isbn || "";
-    $("#bfDevice").checked = !!b.onDevice;
     // Máy đã tải bản này thì mặc định KHÔNG ghi file: file đổi thì máy phải tải lại, tiến độ đồng bộ tính theo file mới
     $("#bfWrite").checked = !b.fetched;
     $("#bfWriteNote").textContent = b.fetched
@@ -744,11 +740,11 @@
     if (!b) return;
     busy($("#bfSave"), L("Đang lưu…", "Saving…"), async () => {
       const title = $("#bfTitle").value.trim(), author = $("#bfAuthor").value.trim();
-      const patch = { title, author, isbn: $("#bfIsbn").value.trim(), onDevice: $("#bfDevice").checked, shelves: checkedShelves(), finished: $("#bfDone").checked ? fromDateInput($("#bfDoneDate").value) : 0 };
+      const patch = { title, author, isbn: $("#bfIsbn").value.trim(), shelves: checkedShelves(), finished: $("#bfDone").checked ? fromDateInput($("#bfDoneDate").value) : 0 };
       const renamed = title !== b.title || author !== (b.author || "");
       try {
         await api("/api/books/" + encodeURIComponent(b.id), { method: "PATCH", json: patch });
-        Object.assign(b, { title, author, isbn: patch.isbn.replace(/[\s-]/g, "").toUpperCase(), onDevice: patch.onDevice, shelves: patch.shelves, finished: patch.finished });
+        Object.assign(b, { title, author, isbn: patch.isbn.replace(/[\s-]/g, "").toUpperCase(), shelves: patch.shelves, finished: patch.finished });
         if ($("#bfWrite").checked && renamed) {
           $("#bfStatus").textContent = L("Đang ghi vào file…", "Writing into the file…");
           await writeMetaToFile(b, title, author);
@@ -851,9 +847,9 @@
   // ── Kéo thả: kéo sách thả vào thẻ tầng / tầng trên tủ (máy tính; điện thoại dùng hộp Sửa) ──
   const DRAG_TYPE = "text/x-xl-book";
   /** Cuốn trong lưới đang đứng ở đâu (để kéo sang tầng khác là chuyển chứ không nhân đôi) */
-  function dragFrom() { return view === "device" || view.startsWith("s:") ? view : ""; }
+  function dragFrom() { return view.startsWith("s:") ? view : ""; }
   const shelfName = (id) => shelves.find((s) => s.id === id)?.name ?? "";
-  const dropKey = (el) => el?.dataset.drop || (el?.matches?.("#shelfBar [data-view]") && ["device", "unsorted"].concat(shelves.map((s) => "s:" + s.id)).includes(el.dataset.view) ? el.dataset.view : "");
+  const dropKey = (el) => el?.dataset.drop || (el?.matches?.("#shelfBar [data-view]") && ["unsorted"].concat(shelves.map((s) => "s:" + s.id)).includes(el.dataset.view) ? el.dataset.view : "");
   const dropTarget = (e) => e.target.closest?.("[data-drop], #shelfBar [data-view]");
   let dragging = null; // { id, from }
 
@@ -896,19 +892,14 @@
     dropBook(id, from, key);
   });
 
-  /** Thả sách: vào tầng (chuyển nếu kéo từ tầng khác), vào Lên máy, hoặc về Chưa phân loại (gỡ khỏi chỗ vừa rời). */
+  /** Thả sách: vào tầng (chuyển nếu kéo từ tầng khác) hoặc về Chưa phân loại (gỡ khỏi tầng vừa rời). */
   async function dropBook(id, from, key) {
     const b = books.find((x) => x.id === id);
     if (!b || key === from) return;
     const fromShelf = from.startsWith("s:") ? from.slice(2) : "";
     let patch, msg;
-    if (key === "device") {
-      if (b.onDevice) return toast(L("Cuốn này đã Lên máy rồi", "Already on device"));
-      patch = { onDevice: true };
-      msg = L(`Đã cho “${b.title}” lên máy`, `“${b.title}” is now on device`);
-    } else if (key === "unsorted") {
-      if (from === "device") { patch = { onDevice: false }; msg = L(`Đã bỏ “${b.title}” khỏi máy`, `Removed “${b.title}” from device`); }
-      else if (fromShelf) { patch = { shelves: shelfOf(b).filter((x) => x !== fromShelf) }; msg = L(`Đã gỡ “${b.title}” khỏi tầng ${shelfName(fromShelf)}`, `Took “${b.title}” off ${shelfName(fromShelf)}`); }
+    if (key === "unsorted") {
+      if (fromShelf) { patch = { shelves: shelfOf(b).filter((x) => x !== fromShelf) }; msg = L(`Đã gỡ “${b.title}” khỏi tầng ${shelfName(fromShelf)}`, `Took “${b.title}” off ${shelfName(fromShelf)}`); }
       else return toast(L("Kéo từ một tầng thả vào đây để gỡ sách khỏi tầng đó", "Drag from a shelf to here to take a book off it"));
     } else {
       const to = key.slice(2);
@@ -918,7 +909,6 @@
     }
     try {
       await api("/api/books/" + encodeURIComponent(id), { method: "PATCH", json: patch });
-      if (patch.onDevice !== undefined) b.onDevice = patch.onDevice;
       if (patch.shelves) b.shelves = patch.shelves;
       render();
       toast(msg);
@@ -1167,20 +1157,6 @@
   });
   $("#pasteBtn").addEventListener("click", sendText);
 
-  /** Bật / tắt "Lên máy" ngay trên bìa. */
-  async function toggleDevice(btn) {
-    const b = books.find((x) => x.id === btn.dataset.dev);
-    if (!b || btn.dataset.busy) return;
-    btn.dataset.busy = "1";
-    const next = !b.onDevice;
-    try {
-      await api("/api/books/" + encodeURIComponent(b.id), { method: "PATCH", json: { onDevice: next } });
-      b.onDevice = next;
-      render();
-      toast(next ? L("Đã cho lên máy: lần sau mở kệ OPDS trên máy là thấy", "On device: it shows up next time your reader opens the OPDS shelf") : L("Đã bỏ khỏi máy (sách vẫn trên kệ web)", "Removed from device (still on your web shelf)"));
-    } catch (err) { delete btn.dataset.busy; toast(tr(err.message), true); }
-  }
-
   // Bìa trên tủ là div role=button: Enter / Space cũng mở
   $("#books").addEventListener("keydown", (e) => {
     const el = e.target.closest?.("[data-open]");
@@ -1192,8 +1168,6 @@
     if (edit) return openBook(edit.dataset.edit || edit.dataset.open);
     const go = e.target.closest("[data-view]");
     if (go) return setView(go.dataset.view);
-    const dev = e.target.closest("[data-dev]");
-    if (dev) return toggleDevice(dev);
     const btn = e.target.closest("[data-del]");
     if (!btn || btn.dataset.busy) return;
     if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = L("Chắc chứ?", "Sure?"); setTimeout(() => { btn.dataset.armed = ""; if (!btn.dataset.busy) btn.textContent = L("Xóa", "Delete"); }, 2500); return; }

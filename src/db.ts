@@ -266,11 +266,14 @@ export async function listBooks(db: D1Database, userId: string, limit = LIST_LIM
   return r.results;
 }
 
-/** Feed OPDS: chỉ sách đang bật "Lên máy". */
-export async function listDeviceBooks(db: D1Database, userId: string, limit: number, offset: number): Promise<BookRow[]> {
+/** Feed OPDS của một tầng: sách trong tầng đó (của đúng người), mới trước. */
+export async function listShelfBooks(db: D1Database, userId: string, shelfId: string, limit: number, offset: number): Promise<BookRow[]> {
   const r = await db
-    .prepare("SELECT * FROM books WHERE user_id = ? AND on_device = 1 ORDER BY id DESC LIMIT ? OFFSET ?")
-    .bind(userId, limit, offset)
+    .prepare(
+      `SELECT b.* FROM books b JOIN book_shelves s ON s.book_id = b.id AND s.user_id = b.user_id
+       WHERE b.user_id = ? AND s.shelf_id = ? ORDER BY b.id DESC LIMIT ? OFFSET ?`,
+    )
+    .bind(userId, shelfId, limit, offset)
     .all<BookRow>();
   return r.results;
 }

@@ -98,16 +98,15 @@ Tìm trên Google Books cần khóa API (miễn phí, khoảng 1.000 lượt/ng�
 npx wrangler secret put GOOGLE_BOOKS_KEY
 ```
 
-### Sắp xếp kệ: tầng, Lên máy, tiến độ đọc
+### Sắp xếp kệ: tầng, OPDS theo tầng, tiến độ đọc
 
-- **Kệ sách** (màn hình mặc định, đứng cạnh thẻ **Chưa phân loại**): tủ trưng bày, mỗi tầng một hàng bìa trên tấm ván, tên tầng khắc trên biển đồng. Cuốn nào không lên máy thì bìa có nhãn nhỏ; thẻ **⚡ Lên máy** phía trên để lọc sách máy đang thấy. Sách chưa phân loại không lên kệ. Bấm bìa để sửa, tải hoặc xóa; bấm biển tên hoặc thẻ phía trên để xem riêng một tầng.
-- **Kéo thả** (máy tính): kéo một cuốn thả vào thẻ tầng hoặc tầng trên tủ là xếp vào (kéo từ tầng khác thì là chuyển tầng); thả vào **⚡ Lên máy** là bật Lên máy; thả vào **Chưa phân loại** là gỡ khỏi tầng vừa rời (kéo từ tầng Lên máy thì tắt Lên máy). Điện thoại dùng hộp Sửa.
-- **Lên máy**: nút trên bìa từng cuốn. Máy đọc (OPDS) chỉ thấy các cuốn đang bật. Sách mới mặc định bật, nên ai không dùng thì máy vẫn thấy cả kệ như cũ.
+- **Kệ sách** (màn hình mặc định, đứng cạnh thẻ **Chưa phân loại**): tủ trưng bày, mỗi tầng một hoặc vài hàng bìa trên tấm ván, tên tầng khắc trên biển đồng. Bấm bìa để sửa, tải hoặc xóa; bấm biển tên hoặc thẻ phía trên để xem riêng một tầng.
 - **Tầng**: tự đặt (Văn học, Trinh thám, "Đọc lại"…), một cuốn nằm được nhiều tầng. Xóa tầng không xóa sách.
-- **Chưa phân loại**: tự gom những cuốn còn thiếu tầng, tác giả hoặc bìa. Dọn xong là tự rời khỏi đây. **Theo tác giả**: kệ gom theo tên tác giả, không phải tạo tay.
-- **Sửa**: tên, tác giả, ISBN, tầng, Lên máy. Tùy chọn ghi luôn tên, tác giả vào file EPUB (trình duyệt sửa `content.opf` rồi gửi lại, tốn một lượt gửi trong ngày). Máy đã tải bản cũ thì phải tải lại, và tiến độ đồng bộ của file mới bắt đầu lại (KOSync nhận sách theo nội dung file), nên với cuốn đã về máy, ô này mặc định tắt.
+- **Máy đọc thấy đúng kệ sách**: đã đóng tầng thì `/opds` là danh sách tầng (CrossPoint hiện như thư mục), mở tầng mới thấy sách. Sách **Chưa phân loại** (chưa lên tầng nào) thì máy không thấy. Chưa đóng tầng nào thì máy thấy tất cả sách như trước. File tải về vẫn nằm chung một thư mục do máy quyết định (CrossPoint: Settings → OPDS → thư mục tải về).
+- **Kéo thả** (máy tính): kéo một cuốn thả vào thẻ tầng hoặc tầng trên tủ là xếp vào (kéo từ tầng khác thì là chuyển tầng); thả vào **Chưa phân loại** là gỡ khỏi tầng vừa rời. Điện thoại dùng hộp Sửa.
+- **Sửa**: tên, tác giả, ISBN, tầng, đã đọc xong. Tùy chọn ghi luôn tên, tác giả vào file EPUB (trình duyệt sửa `content.opf` rồi gửi lại, tốn một lượt gửi trong ngày). Máy đã tải bản cũ thì phải tải lại, và tiến độ đồng bộ của file mới bắt đầu lại (KOSync nhận sách theo nội dung file), nên với cuốn đã về máy, ô này mặc định tắt.
 - **Đã về máy**: máy đọc tải file bằng khóa OPDS thì thẻ sách hiện "✓ đã về máy".
-- **Đọc xong + Chia sẻ**: máy đồng bộ tiến độ quá 97% thì thẻ sách ghi ngày đọc xong (chỉ lần đầu); sách đọc chỗ khác thì tích **Đã đọc xong** trong hộp Sửa. Nút **📤 Chia sẻ** vẽ ảnh 1080 × 1350 (tủ trưng bày với bìa các cuốn đã đọc trong tháng này, tháng trước, năm nay, năm trước hoặc khoảng tự chọn), vẽ ngay trên trình duyệt, không gửi đi đâu; tải về hoặc mở bảng chia sẻ của điện thoại.
+- **Đọc xong + Chia sẻ**: máy đồng bộ tiến độ quá 97% thì ghi ngày đọc xong (chỉ lần đầu); sách đọc chỗ khác thì tích **Đã đọc xong** trong hộp Sửa. Nút **📤 Chia sẻ** vẽ ảnh 1080 × 1350 (tủ trưng bày với bìa các cuốn đã đọc trong tháng này, tháng trước, năm nay, năm trước hoặc khoảng tự chọn), vẽ ngay trên trình duyệt, không gửi đi đâu.
 - **Tiến độ đọc**: máy dùng đồng bộ tiến độ (Document matching = Binary) thì thẻ sách hiện "đọc 43%". Máy chủ tính mã KOReader (partial MD5) của từng file lúc nhận; sách gửi trước đó được tính dần mỗi giờ.
 
 ### Gửi từ Obsidian

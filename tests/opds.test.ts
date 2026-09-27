@@ -42,3 +42,24 @@ test("acquisitionFeed: link next/previous ở cấp feed, self là trang hiện 
   const none = acquisitionFeed({ base: "https://x.example", title: "K", updated: "2026-09-22T10:00:00.000Z", books: [] });
   assert.ok(!none.includes('rel="next"') && !none.includes('rel="previous"'));
 });
+
+test("navigationFeed: mỗi tầng là một mục điều hướng (link atom+xml, không có link tải EPUB), XML hợp lệ", async () => {
+  const { navigationFeed } = await import("../src/opds");
+  const xml = navigationFeed({
+    base: "https://x.example",
+    title: "Kệ của Kiên",
+    updated: "2026-09-27T10:00:00.000Z",
+    items: [
+      { id: "s1", name: "Trinh thám & <Kinh dị>", count: 2 },
+      { id: "s2", name: "Văn học", count: 1 },
+    ],
+  });
+  assert.ok(xml.includes("<title>Trinh thám &amp; &lt;Kinh dị&gt;</title>"));
+  assert.ok(xml.includes('<link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="https://x.example/opds/shelf/s1"/>'));
+  assert.ok(xml.includes("<id>urn:xteinklover:shelf:s2</id>"));
+  assert.ok(xml.includes("2 cuốn"));
+  assert.equal(xml.includes("opds-spec.org/acquisition"), false, "không có link tải trong feed thư mục");
+  assert.ok(xml.includes('<link rel="self" type="application/atom+xml;profile=opds-catalog;kind=navigation" href="https://x.example/opds"/>'));
+  const { DOMParser } = require("@xmldom/xmldom") as { DOMParser: new () => { parseFromString(s: string, t: string): unknown } };
+  assert.doesNotThrow(() => new DOMParser().parseFromString(xml, "text/xml"));
+});

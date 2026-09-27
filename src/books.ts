@@ -3,7 +3,7 @@ import * as db from "./db";
 import { Env, limits } from "./env";
 import { error, json } from "./http";
 import { koreaderHash } from "./kohash";
-import { OPDS_CONTENT_TYPE, acquisitionFeed, newBookId } from "./opds";
+import { OPDS_CONTENT_TYPE, OPDS_NAV_CONTENT_TYPE, acquisitionFeed, navigationFeed, newBookId } from "./opds";
 import { cleanText } from "./validate";
 
 /** CrossPoint 1.6.0 chỉ giữ 62 mục mỗi trang feed (OpdsParser MAX_ENTRIES) → chia trang dưới mức đó. */
@@ -12,14 +12,35 @@ const MAX_PAGE = 20;
 const DAY = 86400;
 const NOT_EPUB = "Chỉ nhận EPUB (trang web tự chuyển file khác sang EPUB trước khi gửi)";
 
-/** Máy đọc sách: feed OPDS riêng của từng người (chỉ sách bật "Lên máy"), có phân trang rel=next/previous. */
-export async function opdsFeed(env: Env, url: URL, user: db.UserRow): Promise<Response> {
-  const page = Math.min(Math.max(parseInt(url.searchParams.get("page") || "1", 10) || 1, 1), MAX_PAGE);
-  const rows = await db.listDeviceBooks(env.DB, user.id, OPDS_PAGE_SIZE + 1, (page - 1) * OPDS_PAGE_SIZE);
-  const books = rows.slice(0, OPDS_PAGE_SIZE).map(db.toMeta);
+/**
+ * Máy đọc sách: feed OPDS riêng của từng người.
+ * - Đã đóng tầng: /opds là danh sách tầng (thư mục trên máy), /opds/shelf/<id> là sách của tầng đó.
+ *   Sách chưa lên tầng nào (Chưa phân loại) thì máy không thấy.
+ * - Chưa có tầng nào: /opds là tất cả sách (như trước), để máy không tự nhiên trống.
+ * Có phân trang rel=next/previous.
+ */
+export async function opdsFeed(env: Env, url: URL, user: db.UserRow, shelfId?: string): Promise<Response> {
   const base = url.origin;
-  const pageUrl = (p: number) => (p <= 1 ? `${base}/opds` : `${base}/opds?page=${p}`);
-  const title = `${env.CATALOG_TITLE || "Xteink Lover"} — ${user.username}${page > 1 ? ` (trang ${page})` : ""}`;
+  const who = `${env.CATALOG_TITLE || "Xteink Lover"} — ${user.username}`;
+  let shelfName = "";
+  if (shelfId) {
+    const shelf = (await db.listShelves(env.DB, user.id)).find((s) => s.id === shelfId);
+    if (!shelf) return new Response("Không có tầng này", { status: 404 });
+    shelfName = shelf.name;
+  } else {
+    const shelves = (await db.listShelves(env.DB, user.id)).filter((s) => s.count > 0);
+    if (shelves.length) {
+      const xml = navigationFeed({ base, title: who, updated: new Date().toISOString(), items: shelves.map((s) => ({ id: s.id, name: s.name, count: s.count })) });
+      return new Response(xml, { headers: { "Content-Type": OPDS_NAV_CONTENT_TYPE, "Cache-Control": "private, no-store" } });
+    }
+  }
+  const page = Math.min(Math.max(parseInt(url.searchParams.get("page") || "1", 10) || 1, 1), MAX_PAGE);
+  const offset = (page - 1) * OPDS_PAGE_SIZE;
+  const rows = shelfId ? await db.listShelfBooks(env.DB, user.id, shelfId, OPDS_PAGE_SIZE + 1, offset) : await db.listBooks(env.DB, user.id, OPDS_PAGE_SIZE + 1, offset);
+  const books = rows.slice(0, OPDS_PAGE_SIZE).map(db.toMeta);
+  const root = shelfId ? `${base}/opds/shelf/${shelfId}` : `${base}/opds`;
+  const pageUrl = (p: number) => (p <= 1 ? root : `${root}?page=${p}`);
+  const title = `${shelfName || who}${page > 1 ? ` (trang ${page})` : ""}`;
   const xml = acquisitionFeed({
     base,
     title,

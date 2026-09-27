@@ -60,7 +60,7 @@ test("tầng: tạo (trùng tên / quá số lượng bị chặn), đổi tên,
   assert.deepEqual((await db.listBooks(d, "u1")).map(db.toMeta).find((b) => b.id === "a1")!.shelves, []);
 });
 
-test("sửa thông tin sách: chỉ chủ sửa được; Lên máy quyết định sách nào có trong OPDS", async () => {
+test("sửa thông tin sách: chỉ chủ sửa được; feed OPDS của một tầng", async () => {
   const { d } = await setup();
   assert.equal(await db.updateBookMeta(d, "u1", "a1", { title: "Phía Sau Nghi Can X", author: "Higashino Keigo", isbn: "9786041085251" }), true);
   assert.equal(await db.updateBookMeta(d, "u1", "a2", { on_device: 0 }), true);
@@ -68,8 +68,15 @@ test("sửa thông tin sách: chỉ chủ sửa được; Lên máy quyết đ�
   assert.equal(await db.updateBookMeta(d, "u1", "khongco", { title: "x" }), false);
   const a1 = db.toMeta((await db.getBook(d, "u1", "a1"))!);
   assert.deepEqual([a1.title, a1.author, a1.isbn], ["Phía Sau Nghi Can X", "Higashino Keigo", "9786041085251"]);
-  const device = await db.listDeviceBooks(d, "u1", 50, 0);
-  assert.deepEqual(device.map((b) => b.id).sort(), ["a1", "a3"]);
+  // Feed OPDS theo tầng: chỉ sách của tầng đó, của đúng người
+  await db.createShelf(d, { id: "s1", user_id: "u1", name: "Trinh thám", created_at: NOW }, 10);
+  await db.createShelf(d, { id: "x1", user_id: "u2", name: "Của Bình", created_at: NOW }, 10);
+  await db.setBookShelves(d, "u1", "a1", ["s1"]);
+  await db.setBookShelves(d, "u1", "a3", ["s1"]);
+  await db.setBookShelves(d, "u2", "b1", ["x1"]);
+  assert.deepEqual((await db.listShelfBooks(d, "u1", "s1", 50, 0)).map((b) => b.id), ["a3", "a1"], "mới trước");
+  assert.deepEqual(await db.listShelfBooks(d, "u1", "x1", 50, 0), [], "tầng người khác: rỗng");
+  assert.deepEqual((await db.listShelfBooks(d, "u1", "s1", 1, 1)).map((b) => b.id), ["a1"], "chia trang");
 });
 
 test("đã về máy + tiến độ đọc: nối sync_progress theo ko_hash của file", async () => {

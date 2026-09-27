@@ -248,16 +248,15 @@ test("bìa sách: chỉ nhận JPEG nhỏ, lưu vào D1, tăng phiên bản; ng�
   assert.equal((await client().req("/api/covers/search?title=abc")).status, 401);
 });
 
-test("sắp xếp kệ: sửa thông tin, tầng, Lên máy lọc OPDS, máy tải thì đánh dấu, thay file", async () => {
+test("sắp xếp kệ: sửa thông tin, tầng, OPDS theo tầng, máy tải thì đánh dấu, thay file", async () => {
   const patch = (c, id, json) => c.req(`/api/books/${id}`, { method: "PATCH", json });
   const mine = async () => (await A.req("/api/books")).data.find((b) => b.id === bookA);
-  const opdsHas = async () => (await (await fetch(`${BASE}/opds`, { headers: basic(U, opdsKeyA) })).text()).includes(bookA);
+  const opds = async (path = "/opds", who = [U, opdsKeyA]) => { const r = await fetch(BASE + path, { headers: basic(...who) }); return { status: r.status, type: r.headers.get("content-type") || "", text: await r.text() }; };
 
-  // Mặc định Lên máy, có trong OPDS
+  // Chưa có tầng nào: /opds là tất cả sách (như cũ)
   let b = await mine();
-  assert.equal(b.onDevice, true);
   assert.deepEqual(b.shelves, []);
-  assert.equal(await opdsHas(), true);
+  assert.ok((await opds()).text.includes(bookA));
 
   // Sửa thông tin; dữ liệu sai; người khác không sửa được
   assert.equal((await patch(A, bookA, { title: "Phía Sau Nghi Can X", author: "Higashino Keigo", isbn: "978-604-1-08525-1" })).status, 200);
@@ -267,12 +266,6 @@ test("sắp xếp kệ: sửa thông tin, tầng, Lên máy lọc OPDS, máy t�
   b = await mine();
   assert.deepEqual([b.title, b.author, b.isbn], ["Phía Sau Nghi Can X", "Higashino Keigo", "9786041085251"]);
 
-  // Tắt Lên máy → biến khỏi OPDS; bật lại → có lại
-  assert.equal((await patch(A, bookA, { onDevice: false })).status, 200);
-  assert.equal(await opdsHas(), false);
-  assert.equal((await patch(A, bookA, { onDevice: true })).status, 200);
-  assert.equal(await opdsHas(), true);
-
   // Tầng: tạo, trùng tên, gán, đổi tên, người khác không đụng được, xóa tầng giữ sách
   const s1 = await A.req("/api/shelves", { method: "POST", json: { name: "Trinh thám" } });
   assert.equal(s1.status, 201, JSON.stringify(s1.data));
@@ -281,6 +274,17 @@ test("sắp xếp kệ: sửa thông tin, tầng, Lên máy lọc OPDS, máy t�
   const sB = await B.req("/api/shelves", { method: "POST", json: { name: "Của Bình" } });
   assert.equal((await patch(A, bookA, { shelves: [s1.data.id, sB.data.id] })).status, 200);
   assert.deepEqual((await mine()).shelves, [s1.data.id], "tầng người khác bị bỏ qua");
+  // Đã có tầng: /opds là danh sách tầng (thư mục), sách nằm trong feed của tầng
+  const root = await opds();
+  assert.match(root.type, /kind=navigation/);
+  assert.ok(root.text.includes(`/opds/shelf/${s1.data.id}`) && root.text.includes("<title>Trinh thám</title>"));
+  assert.equal(root.text.includes(sB.data.id), false, "không lộ tầng người khác");
+  assert.equal(root.text.includes(`/books/${bookA}.epub`), false, "gốc chỉ có thư mục");
+  const inShelf = await opds(`/opds/shelf/${s1.data.id}`);
+  assert.equal(inShelf.status, 200);
+  assert.ok(inShelf.text.includes(`/books/${bookA}.epub`));
+  assert.equal((await opds(`/opds/shelf/${sB.data.id}`)).status, 404, "không mở được tầng người khác");
+  assert.equal((await fetch(`${BASE}/opds/shelf/${s1.data.id}`)).status, 401, "cần khóa OPDS");
   assert.equal((await A.req(`/api/shelves/${s1.data.id}`, { method: "PATCH", json: { name: "Trinh thám Nhật" } })).status, 200);
   assert.equal((await B.req(`/api/shelves/${s1.data.id}`, { method: "PATCH", json: { name: "x" } })).status, 404);
   assert.equal((await B.req(`/api/shelves/${s1.data.id}`, { method: "DELETE" })).status, 404);

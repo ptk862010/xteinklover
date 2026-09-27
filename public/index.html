@@ -196,7 +196,7 @@
       <p class="muted small" id="keyNote" data-en-html="The password is your <b>OPDS key</b>, not your account password. The key is shown only once, when it's created. If you lose it, create a new one and update it on the reader.">Password là <b>khóa OPDS</b>, không phải mật khẩu đăng nhập. Khóa chỉ hiện một lần lúc tạo. Quên thì tạo khóa mới rồi sửa lại trên máy.</p>
       <button class="btn" id="rotateKey" type="button" data-en="Create a new key">Tạo khóa mới</button>
     </li>
-    <li data-en-html="Open the shelf on the reader (<b>Settings → OPDS</b>) → new books are at the top → tap to download.">Mở kệ trên máy (<b>Settings → OPDS</b>) → sách mới nằm trên cùng → bấm tải.</li>
+    <li data-en-html="Open the shelf on the reader (<b>Settings → OPDS</b>). Once you have shelves, each shelf shows up as a folder: open one, tap a book to download. Unsorted books stay off the reader.">Mở kệ trên máy (<b>Settings → OPDS</b>). Đã đóng tầng thì mỗi tầng hiện như một thư mục: mở tầng, bấm sách để tải. Sách Chưa phân loại thì máy không thấy.</li>
   </ol>
   <p class="muted small" data-en="The reader downloads books over HTTPS from any Wi-Fi; it doesn't need to be on the same network as your phone or computer.">Máy kéo sách qua HTTPS từ bất kỳ WiFi nào, không cần cùng mạng với điện thoại hay máy tính.</p>
 
@@ -246,7 +246,6 @@
     <label class="field"><span data-en="Title">Tên sách</span><input id="bfTitle" class="input" maxlength="200" required></label>
     <label class="field"><span data-en="Author">Tác giả</span><input id="bfAuthor" class="input" maxlength="200"></label>
     <label class="field"><span>ISBN</span><input id="bfIsbn" class="input" inputmode="numeric" maxlength="20" autocomplete="off"></label>
-    <label class="check"><input type="checkbox" id="bfDevice"><span data-en-html="<b>On device</b>: your e-reader sees this book on its OPDS shelf"><b>Lên máy</b>: máy đọc thấy cuốn này trong kệ OPDS</span></label>
     <label class="check"><input type="checkbox" id="bfWrite"><span id="bfWriteNote"></span></label>
     <div class="check done-row"><input type="checkbox" id="bfDone" aria-labelledby="bfDoneLabel"><span id="bfDoneLabel" data-en="Finished reading on">Đã đọc xong ngày</span><input type="date" id="bfDoneDate" class="input" aria-label="Ngày đọc xong" data-en-aria-label="Finish date"></div>
     <div class="field"><span data-en="Shelves">Tầng</span>

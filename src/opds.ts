@@ -66,3 +66,41 @@ ${pageLinks}${entries}
 }
 
 export const OPDS_CONTENT_TYPE = "application/atom+xml;profile=opds-catalog;kind=acquisition;charset=utf-8";
+export const OPDS_NAV_CONTENT_TYPE = "application/atom+xml;profile=opds-catalog;kind=navigation;charset=utf-8";
+
+export interface NavOptions {
+  base: string;
+  title: string;
+  updated: string;
+  items: { id: string; name: string; count: number }[];
+}
+
+/**
+ * Feed điều hướng: mỗi tầng một mục. CrossPoint coi mục có link type application/atom+xml (và không có link tải
+ * EPUB) là "thư mục" — bấm vào thì mở feed của tầng đó (/opds/shelf/<id>).
+ */
+export function navigationFeed(opts: NavOptions): string {
+  const entries = opts.items
+    .map(
+      (s) => `  <entry>
+    <title>${escapeXml(s.name)}</title>
+    <id>urn:xteinklover:shelf:${escapeXml(s.id)}</id>
+    <updated>${opts.updated}</updated>
+    <content type="text">${s.count} cuốn</content>
+    <link rel="subsection" type="${NAV_TYPE}" href="${escapeXml(`${opts.base}/opds/shelf/${s.id}`)}"/>
+  </entry>`,
+    )
+    .join("\n");
+  const self = "application/atom+xml;profile=opds-catalog;kind=navigation";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog">
+  <id>urn:xteinklover:catalog</id>
+  <title>${escapeXml(opts.title)}</title>
+  <updated>${opts.updated}</updated>
+  <author><name>Xteink Lover</name></author>
+  <link rel="self" type="${self}" href="${escapeXml(opts.base)}/opds"/>
+  <link rel="start" type="${self}" href="${escapeXml(opts.base)}/opds"/>
+${entries}
+</feed>
+`;
+}

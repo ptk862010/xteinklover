@@ -116,8 +116,6 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
   transition: transform .2s ease, box-shadow .2s ease; transform-origin: bottom center; }
 .spine:hover, .spine:focus-visible { transform: translateY(-8px) rotate(-1.5deg); box-shadow: inset 4px 0 0 rgba(0,0,0,.18), 12px 18px 22px -6px rgba(0,0,0,.55); }
 .spine:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-/* Lên máy là mặc định: chỉ đánh dấu cuốn KHÔNG lên máy */
-.spine .off { position: absolute; z-index: 1; top: 6px; right: 6px; max-width: calc(100% - 12px); font-style: normal; font: 600 .6rem/1.2 Inter, system-ui, sans-serif; padding: 3px 6px; border-radius: 999px; background: rgba(0,0,0,.72); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tier-empty { grid-column: 1 / -1; justify-self: center; align-self: center; margin: 0; padding-bottom: 12px; color: var(--ink2); font-size: .86rem; font-style: italic; }
 .case-hint { color: var(--ink2); font-size: .86rem; margin: 12px 2px 0; }
 .seg { display: inline-flex; flex: none; gap: 2px; padding: 3px; margin-right: 6px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
@@ -133,7 +131,7 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 [data-drag] { -webkit-user-drag: element; }
 [data-drag] img { -webkit-user-drag: none; pointer-events: none; }
 .is-dragging { opacity: .35; }
-.dragging-book #shelfBar [data-view="device"], .dragging-book #shelfBar [data-view="unsorted"], .dragging-book #shelfBar [data-view^="s:"] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 1px; }
+.dragging-book #shelfBar [data-view="unsorted"], .dragging-book #shelfBar [data-view^="s:"] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 1px; }
 .chip.drop-over { background: var(--accent) !important; color: var(--accent-ink) !important; outline-style: solid !important; transform: scale(1.06); }
 .dragging-book .tier .tier-row { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
 .tier.drop-over .tier-row { box-shadow: inset 0 0 0 3px var(--accent); background-color: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -159,9 +157,6 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 .group { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 10px; font-size: 1rem; }
 .group span { color: var(--ink2); font-weight: 400; font-size: .85rem; }
 .empty-view { color: var(--ink2); padding: 18px 0; margin: 0; }
-.dev { position: absolute; z-index: 1; top: 8px; right: 8px; border: 0; border-radius: 999px; padding: 3px 9px; font: 600 .72rem/1.4 Inter, system-ui, sans-serif; cursor: pointer; background: rgba(0,0,0,.55); color: #fff; text-shadow: none; }
-.dev.on { background: var(--accent); color: var(--accent-ink); }
-.dev:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .prog { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0,0,0,.35); }
 .prog i { display: block; height: 100%; background: var(--accent); }
 .meta .st { display: block; margin-top: 2px; color: var(--ok); }

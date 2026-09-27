@@ -44,7 +44,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   const method = req.method.toUpperCase();
 
   const isApi = path.startsWith("/api/");
-  const isDevice = path === "/opds" || path === "/opds/catalog" || path.startsWith("/books/");
+  const isDevice = path === "/opds" || path === "/opds/catalog" || path.startsWith("/opds/shelf/") || path.startsWith("/books/");
   const isOauth = path === "/auth/google/callback";
   // Đồng bộ tiến độ (KOSync): máy đọc gọi /users/*, /syncs/* bằng header x-auth-*, không cookie, không Origin
   const isSync = kosync.isSyncPath(path);
@@ -75,6 +75,8 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     const user = session?.user ?? (await userFromBasic(env.DB, req.headers.get("Authorization")));
     if (!user) return isBrowserNavigation(req) ? deviceOnlyPage() : unauthorized();
     if (path === "/opds" || path === "/opds/catalog") return books.opdsFeed(env, url, user);
+    const shelfFeed = path.match(/^\/opds\/shelf\/([a-z0-9]{1,32})$/);
+    if (shelfFeed) return books.opdsFeed(env, url, user, shelfFeed[1]);
     const dl = path.match(new RegExp(`^/books/${BOOK_ID}\\.epub$`));
     // Máy đọc (không có phiên web) tải về → đánh dấu "đã về máy"
     if (dl) return books.download(env, user, dl[1], session ? undefined : ctx);
