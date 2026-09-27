@@ -6,7 +6,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const PORT = 8799;
-const NODE = process.argv.includes("--node");
+// `--desktop`: cùng bộ test trên file chạy một mình (npm run build:desktop → dist/desktop/xteinklover[.exe])
+const DESKTOP = process.argv.includes("--desktop");
+const NODE = DESKTOP || process.argv.includes("--node");
+const DESKTOP_EXE = `dist/desktop/xteinklover${process.platform === "win32" ? ".exe" : ""}`;
 const startedAt = new Date();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -44,10 +47,10 @@ const VARS = {
 const varArgs = Object.entries(VARS).flatMap(([k, v]) => ["--var", `${k}:${v}`]);
 // Gọi thẳng wrangler bằng node (không qua shell) để taskkill /T diệt được cả workerd con
 const dev = NODE
-  ? spawn(process.execPath, ["dist/server.mjs"], {
+  ? spawn(DESKTOP ? DESKTOP_EXE : process.execPath, DESKTOP ? [] : ["dist/server.mjs"], {
       stdio: ["ignore", "pipe", "pipe"],
       // TRUST_PROXY=cloudflare: test giả nhiều IP bằng header CF-Connecting-IP, như wrangler dev cho phép
-      env: { ...process.env, ...VARS, PORT: String(PORT), HOST: "127.0.0.1", DATA_DIR: STATE, TRUST_PROXY: "cloudflare" },
+      env: { ...process.env, ...VARS, PORT: String(PORT), HOST: "127.0.0.1", DATA_DIR: STATE, TRUST_PROXY: "cloudflare", XL_NO_BROWSER: "1" },
     })
   : spawn(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "dev", "--port", String(PORT), "--persist-to", STATE, ...varArgs], {
       stdio: ["ignore", "pipe", "pipe"],

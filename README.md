@@ -55,6 +55,15 @@ npx wrangler secret put SIGNUP_CODE
 npm run deploy          # lần đầu Cloudflare tự tạo KV + D1
 ```
 
+### Tải về dùng luôn (Windows, macOS, Linux)
+
+Không muốn đụng tới Cloudflare hay Docker: vào [Releases](https://github.com/ptk862010/xteinklover/releases/latest), tải file đúng máy (`windows-x64`, `macos-arm64` cho Mac chip M, `macos-x64` cho Mac Intel, `linux-x64`), giải nén, nhấp đúp `xteinklover`. Một file khoảng 35 MB, không cần cài gì.
+
+- Cửa sổ dòng lệnh hiện địa chỉ OPDS cho máy đọc, trình duyệt tự mở kệ. Lần đầu tạo tài khoản luôn, không cần mã mời (chỉ một tài khoản). Đóng cửa sổ là tắt.
+- Dữ liệu nằm ở `%APPDATA%\Xteink Lover` (Windows), `~/Library/Application Support/Xteink Lover` (macOS), `~/.local/share/xteink-lover` (Linux). Tải bản mới chỉ việc thay file, sách vẫn còn.
+- App chưa ký: Windows SmartScreen cảnh báo thì bấm **More info → Run anyway**; macOS lần đầu chuột phải → **Open**. Windows hỏi quyền mạng thì bấm **Allow**, không thì máy đọc không vào được.
+- Máy tính phải bật và cùng WiFi với máy đọc. Có nút 📲 **Đổ xuống máy** như bản Docker.
+
 ### Tự chạy bằng Docker (không cần Cloudflare)
 
 Cùng code, chạy trên máy nhà, NAS, VPS: tài khoản và danh mục nằm trong một file SQLite, sách nằm trong một thư mục, tất cả trong volume `/data`.
@@ -141,6 +150,8 @@ npm run dev             # http://127.0.0.1:8787
 npm test                # unit test
 npm run test:e2e        # test tích hợp: bật wrangler dev với dữ liệu sạch, chạy cả luồng
 npm run test:e2e:node   # cùng bộ test trên bản tự chạy (Node + SQLite + thư mục)
+npm run build:desktop   # bản tải về một file cho hệ điều hành đang dùng → dist/desktop/
+npm run test:e2e:desktop
 npm run typecheck
 ```
 
@@ -265,6 +276,10 @@ npm run deploy
 ```
 
 Free plan limits (shared by the whole Cloudflare account): 100,000 Worker requests/day, KV 1 GB and 1,000 writes/day, D1 5 million reads and 100,000 writes/day. Quotas reset at 00:00 UTC.
+
+### Download and run (Windows, macOS, Linux)
+
+Grab the file for your computer from [Releases](https://github.com/ptk862010/xteinklover/releases/latest) (`windows-x64`, `macos-arm64` for Apple Silicon, `macos-x64` for Intel Macs, `linux-x64`), unzip, double-click `xteinklover`. One ~35 MB file, nothing to install. A console window shows the OPDS address for your reader and your browser opens the shelf; create your account right away (single account, no invite code). Close the window to stop. Data lives in `%APPDATA%\Xteink Lover`, `~/Library/Application Support/Xteink Lover` or `~/.local/share/xteink-lover`. The app is unsigned: on Windows choose **More info → Run anyway** and **Allow** network access; on macOS right-click → **Open** the first time. The reader must be on the same Wi-Fi.
 
 ### Self-host with Docker (no Cloudflare)
 

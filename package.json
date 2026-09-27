@@ -13,7 +13,9 @@
     "test:e2e": "npm run build && node scripts/e2e.mjs",
     "build:node": "npm run build && node scripts/build-node.mjs",
     "start:node": "node dist/server.mjs",
-    "test:e2e:node": "npm run build:node && node scripts/e2e.mjs --node"
+    "test:e2e:node": "npm run build:node && node scripts/e2e.mjs --node",
+    "build:desktop": "npm run build && node scripts/build-desktop.mjs",
+    "test:e2e:desktop": "npm run build:desktop && node scripts/e2e.mjs --desktop"
   },
   "license": "MIT",
   "devDependencies": {
@@ -22,6 +24,7 @@
     "@types/turndown": "^5.0.6",
     "@xmldom/xmldom": "^0.9.12",
     "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "wrangler": "^4.136.2"

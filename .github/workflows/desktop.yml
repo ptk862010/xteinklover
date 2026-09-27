@@ -1,0 +1,64 @@
+# Bản tải về một file (Node SEA) cho Windows / macOS / Linux.
+# Gắn tag v* (vd `git tag v0.2.0 && git push origin v0.2.0`) → build, chạy đủ test e2e trên từng file chạy,
+# rồi đính kèm vào trang Releases. Bấm "Run workflow" thì chỉ build + test, file nằm ở mục Artifacts.
+name: Desktop
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: windows-x64 }
+          - { os: macos-latest, name: macos-arm64 }
+          - { os: macos-15-intel, name: macos-x64 }
+          - { os: ubuntu-latest, name: linux-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # --ignore-scripts: không tải workerd của wrangler (bản tải về không cần)
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: npm run build:desktop
+      - name: Test e2e trên chính file chạy
+        run: node scripts/e2e.mjs --desktop
+      - name: Nén (Windows)
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path dist/desktop/xteinklover.exe -DestinationPath xteinklover-${{ matrix.name }}.zip
+      - name: Nén (macOS / Linux, giữ quyền chạy)
+        if: runner.os != 'Windows'
+        run: cd dist/desktop && zip -9 ../../xteinklover-${{ matrix.name }}.zip xteinklover
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xteinklover-${{ matrix.name }}
+          path: xteinklover-${{ matrix.name }}.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: xteinklover-*.zip
+          generate_release_notes: true
+          body: |
+            Tải file đúng máy, giải nén, nhấp đúp `xteinklover`. Trình duyệt tự mở kệ sách; đóng cửa sổ dòng lệnh là tắt.
+            - Windows: SmartScreen cảnh báo thì bấm **More info → Run anyway**; hỏi quyền mạng thì bấm **Allow** (để máy đọc vào được).
+            - macOS: lần đầu chuột phải → **Open** (app chưa ký với Apple). Apple Silicon: `macos-arm64`, Intel: `macos-x64`.
+            - Máy đọc phải cùng WiFi với máy tính. Hướng dẫn đầy đủ: README → "Tải về dùng luôn".
