@@ -6,9 +6,10 @@
   let books = [];
   /** Tầng của người dùng; cách xem kệ: all | device | unsorted | authors | s:<id tầng> */
   let shelves = [];
-  let view = "all";
+  let view = "shelf";
   // Mặc định: cả kệ theo tầng (chưa có tầng nào thì tự thành "Tất cả")
   try { view = localStorage.getItem("xl_view2") || "shelf"; } catch { /* bỏ qua */ }
+  if (view === "all") view = "shelf";
   let shelfTool = null; // null | "new" | "rename"
   let me = null;
   /** Cấu hình công khai của trang (/api/config): có bật Google không, đăng ký có cần mã mời không */
@@ -531,14 +532,11 @@
   }
 
   function renderBar() {
-    if (view.startsWith("s:") && !shelves.some((s) => "s:" + s.id === view)) view = "all";
-    const cur0 = view === "shelf" && !shelves.length ? "all" : view;
-    const chip = (v, label, n) => `<button class="chip${cur0 === v ? " on" : ""}" type="button" data-view="${esc(v)}" aria-pressed="${cur0 === v}">${esc(label)}${n === undefined ? "" : ` <span>${n}</span>`}</button>`;
+    if (view.startsWith("s:") && !shelves.some((s) => "s:" + s.id === view)) view = "shelf";
+    const chip = (v, label, n, cls = "") => `<button class="chip${cls}${view === v ? " on" : ""}" type="button" data-view="${esc(v)}" aria-pressed="${view === v}">${esc(label)}${n === undefined ? "" : ` <span>${n}</span>`}</button>`;
     $("#shelfBar").innerHTML = [
-      ...(shelves.length ? [chip("shelf", L("Kệ sách", "Bookcase"))] : []),
-      chip("all", L("Tất cả", "All"), books.length),
+      `<span class="seg">${chip("shelf", L("Kệ sách", "Bookcase"), undefined, " big")}${chip("unsorted", L("Chưa phân loại", "Unsorted"), books.filter(isUnsorted).length, " big")}</span>`,
       chip("device", L("⚡ Lên máy", "⚡ On device"), books.filter((b) => b.onDevice).length),
-      chip("unsorted", L("Chưa phân loại", "Unsorted"), books.filter(isUnsorted).length),
       ...shelves.map((s) => chip("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)).length)),
       chip("authors", L("Theo tác giả", "By author")),
       `<button class="chip add" type="button" data-newshelf>＋ ${L("Tầng", "Shelf")}</button>`,
@@ -566,19 +564,22 @@
   }
 
   /** Cả kệ: tầng Lên máy trên cùng, rồi các tầng tự tạo. Sách chưa phân loại không lên kệ, chỉ có dòng nhắc. */
+  /** Tủ trưng bày: tầng ⚡ Lên máy trên cùng, rồi các tầng tự tạo; tên tầng khắc trên biển đồng ở mép ván. */
   function renderCase() {
-    const tier = (key, name, list, empty) => `<section class="tier"><h3 class="tier-name"><button type="button" data-view="${esc(key)}">${esc(name)} <span>${list.length}</span></button></h3>
-      <div class="tier-row">${list.length ? list.map(spine).join("") : `<p class="tier-empty">${esc(empty)}</p>`}</div></section>`;
-    const loose = books.filter(isUnsorted).length;
-    $("#books").innerHTML = (loose ? `<button class="loose" type="button" data-view="unsorted">📥 ${esc(L(`${loose} cuốn chưa phân loại: thêm tác giả, bìa, tầng rồi nó tự lên kệ`, `${loose} unsorted: add an author, a cover and a shelf and it moves onto the bookcase`))} →</button>` : "")
+    const tier = (key, name, list, empty) => `<section class="tier">
+      <div class="tier-row">${list.length ? list.map(spine).join("") : `<p class="tier-empty">${esc(empty)}</p>`}</div>
+      <div class="plank"><button class="plate" type="button" data-view="${esc(key)}">${esc(name)} · ${list.length}</button></div></section>`;
+    const hint = shelves.length ? "" : `<p class="case-hint">${esc(L("Bấm “＋ Tầng” để đóng thêm tầng (Văn học, Trinh thám…), rồi mở từng cuốn để xếp lên.", "Tap “＋ Shelf” to add shelves (Fiction, Mystery…), then open a book to place it."))}</p>`;
+    $("#books").innerHTML = `<div class="case">`
       + tier("device", L("⚡ Lên máy", "⚡ On device"), books.filter((b) => b.onDevice), L("Chưa có cuốn nào. Mở một cuốn, tích Lên máy.", "Nothing yet. Open a book and tick On device."))
-      + shelves.map((s) => tier("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)), L("Tầng trống. Mở một cuốn, tích tầng này.", "Empty. Open a book and tick this shelf."))).join("");
+      + shelves.map((s) => tier("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)), L("Tầng trống. Mở một cuốn, tích tầng này.", "Empty. Open a book and tick this shelf."))).join("")
+      + `</div>` + hint;
   }
 
   function render() {
     renderBar();
     const q = $("#search").value.trim().toLowerCase();
-    if (view === "shelf" && books.length && shelves.length && !q) {
+    if (view === "shelf" && books.length && !q) {
       $("#count").textContent = L(`${books.length} cuốn`, `${books.length} ${books.length === 1 ? "book" : "books"}`);
       $("#empty").hidden = true;
       $("#shelfBar").hidden = false;
@@ -802,7 +803,7 @@
         await api("/api/shelves/" + encodeURIComponent(id), { method: "DELETE" });
         shelves = shelves.filter((s) => s.id !== id);
         books.forEach((b) => { b.shelves = shelfOf(b).filter((x) => x !== id); });
-        setView("all");
+        setView("shelf");
         toast(L("Đã xóa tầng (sách vẫn còn)", "Shelf deleted (books kept)"));
       } catch (err) { toast(tr(err.message), true); }
     });
