@@ -1,0 +1,11 @@
+node_modules
+dist
+data
+.git
+.wrangler
+.dev.vars
+.env
+*.log
+tests
+public/convert
+public/pdfjs

@@ -8,6 +8,7 @@
   },
   "include": [
     "tests/*.test.ts",
+    "node/**/*.ts",
     "web/vendor.d.ts"
   ]
 }

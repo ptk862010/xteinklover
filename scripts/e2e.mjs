@@ -1,10 +1,12 @@
 // Bật wrangler dev với state sạch, chạy test tích hợp, rồi tắt và dọn.
+// `--node`: chạy cùng bộ test trên bản tự chạy (dist/server.mjs: SQLite + thư mục) thay cho wrangler dev.
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const PORT = 8799;
+const NODE = process.argv.includes("--node");
 const startedAt = new Date();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -41,20 +43,28 @@ const VARS = {
 };
 const varArgs = Object.entries(VARS).flatMap(([k, v]) => ["--var", `${k}:${v}`]);
 // Gọi thẳng wrangler bằng node (không qua shell) để taskkill /T diệt được cả workerd con
-const dev = spawn(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "dev", "--port", String(PORT), "--persist-to", STATE, ...varArgs], {
-  stdio: ["ignore", "pipe", "pipe"],
-});
+const dev = NODE
+  ? spawn(process.execPath, ["dist/server.mjs"], {
+      stdio: ["ignore", "pipe", "pipe"],
+      // TRUST_PROXY=cloudflare: test giả nhiều IP bằng header CF-Connecting-IP, như wrangler dev cho phép
+      env: { ...process.env, ...VARS, PORT: String(PORT), HOST: "127.0.0.1", DATA_DIR: STATE, TRUST_PROXY: "cloudflare" },
+    })
+  : spawn(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "dev", "--port", String(PORT), "--persist-to", STATE, ...varArgs], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+const READY = NODE ? "đang chạy" : "Ready on";
+const WHO = NODE ? "server" : "wrangler dev";
 let log = "";
 dev.stdout.on("data", (d) => (log += d));
 dev.stderr.on("data", (d) => (log += d));
 
 async function waitReady() {
   for (let i = 0; i < 120; i++) {
-    if (dev.exitCode !== null) throw new Error("wrangler dev đã thoát:\n" + log);
-    if (log.includes("Ready on") && (await probe()) === "ok") return;
+    if (dev.exitCode !== null) throw new Error(`${WHO} đã thoát:\n` + log);
+    if (log.includes(READY) && (await probe()) === "ok") return;
     await sleep(500);
   }
-  throw new Error("wrangler dev không lên:\n" + log);
+  throw new Error(`${WHO} không lên:\n` + log);
 }
 
 async function cleanup() {
@@ -84,6 +94,6 @@ try {
   console.error(e.message);
 } finally {
   await cleanup();
-  if (code !== 0) console.error("\n--- wrangler dev log (cuối) ---\n" + log.slice(-4000));
+  if (code !== 0) console.error(`\n--- ${WHO} log (cuối) ---\n` + log.slice(-4000));
 }
 process.exit(code ?? 1);

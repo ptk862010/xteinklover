@@ -8,3 +8,7 @@ public/pdfjs/
 .env.*
 .dev.vars.*
 !.dev.vars.example
+
+# Bản tự chạy (npm run build:node) và dữ liệu khi chạy thử
+dist/
+data/

@@ -1,0 +1,32 @@
+# Xteink Lover tự chạy bằng Docker.
+#   1. Tạo file .env cạnh file này, ghi một dòng:  SIGNUP_CODE=tu-chon-mot-tu
+#   2. docker compose up -d
+#   3. Mở http://<IP máy này>:8787, đăng ký bằng mã vừa đặt.
+# Dữ liệu (tài khoản, sách, bìa) nằm trong volume "xteinklover-data": xóa container không mất sách.
+services:
+  xteinklover:
+    build: .
+    image: xteinklover
+    container_name: xteinklover
+    restart: unless-stopped
+    ports:
+      # Mở cho cả mạng nhà (máy đọc cần vào). Có reverse proxy / tunnel chạy trên chính máy này thì đổi thành
+      # "127.0.0.1:8787:8787", để không ai vòng qua proxy mà giả IP.
+      - "8787:8787"
+    volumes:
+      - xteinklover-data:/data
+    environment:
+      # Mã mời để đăng ký tài khoản. Bắt buộc: không đặt thì không ai đăng ký được.
+      SIGNUP_CODE: ${SIGNUP_CODE:?Đặt SIGNUP_CODE trong file .env}
+      # Số tài khoản tối đa (1 = chỉ mình bạn; cả nhà dùng thì tăng lên).
+      MAX_USERS: ${MAX_USERS:-1}
+      # Tên kệ hiện trên máy đọc.
+      CATALOG_TITLE: ${CATALOG_TITLE:-Xteink Lover}
+      # Khóa Google Books (không bắt buộc): tìm bìa tốt hơn. Thiếu thì chỉ tìm trên Open Library.
+      GOOGLE_BOOKS_KEY: ${GOOGLE_BOOKS_KEY:-}
+      # Đặt sau reverse proxy (Caddy, nginx, Traefik) để mở ra Internet có HTTPS: "1".
+      # Qua Cloudflare Tunnel: "cloudflare". Chỉ dùng trong mạng nhà: để trống.
+      TRUST_PROXY: ${TRUST_PROXY:-}
+
+volumes:
+  xteinklover-data:

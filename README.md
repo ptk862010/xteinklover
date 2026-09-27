@@ -55,6 +55,24 @@ npx wrangler secret put SIGNUP_CODE
 npm run deploy          # lần đầu Cloudflare tự tạo KV + D1
 ```
 
+### Tự chạy bằng Docker (không cần Cloudflare)
+
+Cùng code, chạy trên máy nhà, NAS, VPS: tài khoản và danh mục nằm trong một file SQLite, sách nằm trong một thư mục, tất cả trong volume `/data`.
+
+```bash
+git clone https://github.com/ptk862010/xteinklover && cd xteinklover
+echo "SIGNUP_CODE=tu-chon-mot-tu" > .env
+docker compose up -d
+```
+
+Mở `http://<IP máy này>:8787` → **Tạo tài khoản** → nhập mã mời. Trên máy đọc, OPDS là `http://<IP máy này>:8787/opds`, đồng bộ tiến độ là `http://<IP máy này>:8787`.
+
+- **Chỉ trong mạng nhà**: máy đọc phải cùng WiFi với máy chạy Docker. Mang ra ngoài thì cần đường vào có HTTPS: Cloudflare Tunnel (`TRUST_PROXY=cloudflare`), Tailscale, hoặc reverse proxy như Caddy, nginx (`TRUST_PROXY=1`). Không đặt `TRUST_PROXY` khi mở cổng thẳng ra Internet, kẻo người ngoài giả được IP để lách giới hạn đăng nhập sai.
+- **Hạn mức** nới hơn bản Cloudflare (5.000 MB mỗi người, 300 lượt gửi mỗi ngày), đổi được bằng biến môi trường giống bảng [Cấu hình](#cấu-hình-vars-trong-wranglertoml), thêm vào phần `environment` của `docker-compose.yml`. Một file vẫn tối đa 25 MB.
+- **Sao lưu**: `docker compose cp xteinklover:/data ./backup` (nên dừng trước: `docker compose stop`).
+- **Cập nhật**: `git pull && docker compose up -d --build`. Bảng dữ liệu tự nâng cấp ở request đầu tiên.
+- Không dùng Docker: cần Node ≥ 22.16, chạy `npm install && npm run build:node`, rồi `SIGNUP_CODE=... node dist/server.mjs` (biến `DATA_DIR`, `PORT`, `HOST` đổi được thư mục dữ liệu và cổng).
+
 ### Đăng nhập bằng Google (không bắt buộc)
 
 Không cấu hình thì trang chỉ có tên + mật khẩu. Muốn có nút "Tiếp tục với Google":
@@ -121,6 +139,7 @@ cp .dev.vars.example .dev.vars
 npm run dev             # http://127.0.0.1:8787
 npm test                # unit test
 npm run test:e2e        # test tích hợp: bật wrangler dev với dữ liệu sạch, chạy cả luồng
+npm run test:e2e:node   # cùng bộ test trên bản tự chạy (Node + SQLite + thư mục)
 npm run typecheck
 ```
 
@@ -245,6 +264,18 @@ npm run deploy
 ```
 
 Free plan limits (shared by the whole Cloudflare account): 100,000 Worker requests/day, KV 1 GB and 1,000 writes/day, D1 5 million reads and 100,000 writes/day. Quotas reset at 00:00 UTC.
+
+### Self-host with Docker (no Cloudflare)
+
+The same code runs on your own machine, NAS or VPS: accounts and catalog in one SQLite file, books in a folder, all inside the `/data` volume.
+
+```bash
+git clone https://github.com/ptk862010/xteinklover && cd xteinklover
+echo "SIGNUP_CODE=pick-a-word" > .env
+docker compose up -d
+```
+
+Open `http://<this machine's IP>:8787` → **Create account**. On the reader, the OPDS URL is `http://<IP>:8787/opds` and the sync server is `http://<IP>:8787`. The reader must be on the same network; to use it from outside, put it behind HTTPS (Cloudflare Tunnel with `TRUST_PROXY=cloudflare`, Tailscale, or a reverse proxy such as Caddy with `TRUST_PROXY=1`). Leave `TRUST_PROXY` empty if the port is exposed directly. Limits are higher than on Cloudflare (5,000 MB per user) and can be changed with the same environment variables. Without Docker: Node ≥ 22.16, `npm install && npm run build:node`, then `SIGNUP_CODE=... node dist/server.mjs`.
 
 ## License
 
