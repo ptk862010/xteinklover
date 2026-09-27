@@ -15,7 +15,7 @@ const HOUR = 3600;
 /** Lượt lấy trang / ảnh mỗi người mỗi giờ */
 export const PAGES_PER_HOUR = 40;
 export const IMAGES_PER_HOUR = 600;
-const USER_AGENT = "Mozilla/5.0 (compatible; XteinkLover/1.0; +https://app.xteinklover.workers.dev)";
+const USER_AGENT = "Mozilla/5.0 (compatible; XteinkLover/1.0; +https://xteinklover.ongk.dev)";
 
 /**
  * Chỉ nhận http(s) tới tên miền công khai, cổng mặc định. Chặn IP viết thẳng, localhost, tên nội bộ,

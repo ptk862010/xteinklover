@@ -5,4 +5,4 @@ Disallow: /auth/
 Disallow: /books/
 Disallow: /opds
 
-Sitemap: https://app.xteinklover.workers.dev/sitemap.xml
+Sitemap: https://xteinklover.ongk.dev/sitemap.xml
