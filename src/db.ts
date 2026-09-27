@@ -29,6 +29,8 @@ export interface BookRow {
   /** Partial MD5 kiểu KOReader của file — khớp với `document` của KOSync. null = chưa tính */
   ko_hash?: string | null;
   isbn?: string;
+  /** Lúc đọc xong (ms), 0 = chưa */
+  finished_at?: number;
   /** Chỉ có khi liệt kê cho web: tiến độ đọc (0–1) từ KOSync, danh sách id tầng "a,b" */
   progress?: number | null;
   shelf_ids?: string | null;
@@ -51,6 +53,8 @@ export interface BookMeta {
   progress?: number | null;
   shelves?: string[];
   isbn?: string;
+  /** ms, 0 = chưa đọc xong */
+  finished?: number;
 }
 
 export function toMeta(b: BookRow): BookMeta {
@@ -66,6 +70,7 @@ export function toMeta(b: BookRow): BookMeta {
     progress: typeof b.progress === "number" ? b.progress : null,
     shelves: b.shelf_ids ? b.shelf_ids.split(",") : [],
     isbn: b.isbn ?? "",
+    finished: b.finished_at ?? 0,
   };
 }
 
@@ -275,11 +280,12 @@ export interface BookPatch {
   author?: string;
   isbn?: string;
   on_device?: number;
+  finished_at?: number;
 }
 
 /** Sửa thông tin trên kệ (không đụng file). false = không có sách này hoặc không phải của người này. */
 export async function updateBookMeta(db: D1Database, userId: string, id: string, p: BookPatch): Promise<boolean> {
-  const cols = (["title", "author", "isbn", "on_device"] as const).filter((k) => p[k] !== undefined);
+  const cols = (["title", "author", "isbn", "on_device", "finished_at"] as const).filter((k) => p[k] !== undefined);
   if (!cols.length) return (await getBook(db, userId, id)) !== null;
   const r = await db
     .prepare(`UPDATE books SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ? AND user_id = ?`)
@@ -355,6 +361,18 @@ export async function renameShelf(db: D1Database, userId: string, id: string, na
 export async function deleteShelf(db: D1Database, userId: string, id: string): Promise<boolean> {
   const r = await db.prepare("DELETE FROM shelves WHERE id = ? AND user_id = ?").bind(id, userId).run();
   return r.meta.changes > 0;
+}
+
+/** Tiến độ KOSync từ ngần này trở lên thì coi là đọc xong. */
+export const FINISHED_AT = 0.97;
+
+/** KOSync báo tiến độ: đủ ngưỡng thì ghi ngày đọc xong cho cuốn có mã file này — chỉ lần đầu (đọc lại không xê dịch). */
+export async function markFinishedByHash(db: D1Database, userId: string, document: string, percentage: number, nowMs: number): Promise<void> {
+  if (!(percentage >= FINISHED_AT)) return;
+  await db
+    .prepare("UPDATE books SET finished_at = ? WHERE user_id = ? AND ko_hash = ? COLLATE NOCASE AND finished_at = 0")
+    .bind(nowMs, userId, document)
+    .run();
 }
 
 /** Máy đọc (Basic auth) vừa tải file này. */

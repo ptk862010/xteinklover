@@ -142,6 +142,7 @@
     [/^Chỉ nhận EPUB$/, "EPUB files only"],
     [/^File quá lớn$/, "File is too large"],
     [/^File không phải EPUB \(.*\)$/, "Not an EPUB file"],
+    [/^Ngày đọc xong không hợp lệ$/, "Invalid finish date"],
   ];
 
   function tr(msg) {

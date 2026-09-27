@@ -107,6 +107,7 @@ npx wrangler secret put GOOGLE_BOOKS_KEY
 - **Chưa phân loại**: tự gom những cuốn còn thiếu tầng, tác giả hoặc bìa. Dọn xong là tự rời khỏi đây. **Theo tác giả**: kệ gom theo tên tác giả, không phải tạo tay.
 - **Sửa**: tên, tác giả, ISBN, tầng, Lên máy. Tùy chọn ghi luôn tên, tác giả vào file EPUB (trình duyệt sửa `content.opf` rồi gửi lại, tốn một lượt gửi trong ngày). Máy đã tải bản cũ thì phải tải lại, và tiến độ đồng bộ của file mới bắt đầu lại (KOSync nhận sách theo nội dung file), nên với cuốn đã về máy, ô này mặc định tắt.
 - **Đã về máy**: máy đọc tải file bằng khóa OPDS thì thẻ sách hiện "✓ đã về máy".
+- **Đọc xong + Chia sẻ**: máy đồng bộ tiến độ quá 97% thì thẻ sách ghi ngày đọc xong (chỉ lần đầu); sách đọc chỗ khác thì tích **Đã đọc xong** trong hộp Sửa. Nút **📤 Chia sẻ** vẽ ảnh 1080 × 1350 (tủ trưng bày với bìa các cuốn đã đọc trong tháng này, tháng trước, năm nay, năm trước hoặc khoảng tự chọn), vẽ ngay trên trình duyệt, không gửi đi đâu; tải về hoặc mở bảng chia sẻ của điện thoại.
 - **Tiến độ đọc**: máy dùng đồng bộ tiến độ (Document matching = Binary) thì thẻ sách hiện "đọc 43%". Máy chủ tính mã KOReader (partial MD5) của từng file lúc nhận; sách gửi trước đó được tính dần mỗi giờ.
 
 ### Gửi từ Obsidian

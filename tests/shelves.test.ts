@@ -28,3 +28,13 @@ test("parseShelfName: 1–40 ký tự sau khi làm sạch", () => {
   assert.equal(parseShelfName(42), null);
   assert.equal(parseShelfName("x".repeat(41)), null);
 });
+
+test("parseBookPatch: đã đọc xong — 0 để bỏ, mốc thời gian (ms) hợp lý; sai thì báo lỗi", () => {
+  const now = Date.UTC(2026, 8, 27);
+  assert.deepEqual(parseBookPatch({ finished: 0 }, now), { patch: { finished_at: 0 }, shelves: undefined });
+  assert.deepEqual(parseBookPatch({ finished: Date.UTC(2026, 8, 1) }, now), { patch: { finished_at: Date.UTC(2026, 8, 1) }, shelves: undefined });
+  assert.equal(parseBookPatch({ finished: -5 }, now), "Ngày đọc xong không hợp lệ");
+  assert.equal(parseBookPatch({ finished: now + 3 * 86400_000 }, now), "Ngày đọc xong không hợp lệ");
+  assert.equal(parseBookPatch({ finished: Date.UTC(1999, 0, 1) }, now), "Ngày đọc xong không hợp lệ");
+  assert.equal(parseBookPatch({ finished: "hôm qua" }, now), "Ngày đọc xong không hợp lệ");
+});

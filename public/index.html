@@ -248,6 +248,7 @@
     <label class="field"><span>ISBN</span><input id="bfIsbn" class="input" inputmode="numeric" maxlength="20" autocomplete="off"></label>
     <label class="check"><input type="checkbox" id="bfDevice"><span data-en-html="<b>On device</b>: your e-reader sees this book on its OPDS shelf"><b>Lên máy</b>: máy đọc thấy cuốn này trong kệ OPDS</span></label>
     <label class="check"><input type="checkbox" id="bfWrite"><span id="bfWriteNote"></span></label>
+    <div class="check done-row"><input type="checkbox" id="bfDone" aria-labelledby="bfDoneLabel"><span id="bfDoneLabel" data-en="Finished reading on">Đã đọc xong ngày</span><input type="date" id="bfDoneDate" class="input" aria-label="Ngày đọc xong" data-en-aria-label="Finish date"></div>
     <div class="field"><span data-en="Shelves">Tầng</span>
       <div id="bfShelves" class="shelf-checks"></div>
       <div class="new-shelf"><input id="bfNewShelf" class="input" maxlength="40" placeholder="Tầng mới, vd Văn học" data-en-placeholder="New shelf, e.g. Fiction" aria-label="Tầng mới" data-en-aria-label="New shelf"><button class="btn" id="bfAddShelf" type="button" data-en="Add">Thêm</button></div>
@@ -266,6 +267,26 @@
   <p class="muted small" id="coverStatus" aria-live="polite"></p>
   <div id="coverResults" class="cover-grid"></div>
   <p class="muted small" data-en="Sources: Google Books, Open Library. Tap a cover to use it. Covers show on this web shelf only.">Nguồn: Google Books, Open Library. Bấm vào bìa để chọn. Bìa chỉ hiện trên kệ web này.</p>
+</aside>
+
+<!-- Chia sẻ sách đã đọc -->
+<aside class="sheet" id="shareSheet" hidden role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+  <div class="sheet-head"><h3 id="shareTitle" data-en="Share what you've read">Chia sẻ sách đã đọc</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
+  <div class="share-periods" id="sharePeriods">
+    <button class="chip on" type="button" data-period="month" data-en="This month">Tháng này</button>
+    <button class="chip" type="button" data-period="prevMonth" data-en="Last month">Tháng trước</button>
+    <button class="chip" type="button" data-period="year" data-en="This year">Năm nay</button>
+    <button class="chip" type="button" data-period="prevYear" data-en="Last year">Năm trước</button>
+    <button class="chip" type="button" data-period="custom" data-en="Custom">Tự chọn</button>
+  </div>
+  <div class="share-custom" id="shareCustom" hidden>
+    <label class="field"><span data-en="From">Từ</span><input type="date" id="shareFrom" class="input"></label>
+    <label class="field"><span data-en="To">Đến</span><input type="date" id="shareTo" class="input"></label>
+  </div>
+  <canvas id="shareCanvas" class="share-canvas" width="1080" height="1350" role="img" aria-label="Ảnh sách đã đọc" data-en-aria-label="Image of books you've read"></canvas>
+  <p class="muted small" id="shareNote" aria-live="polite"></p>
+  <div class="sheet-acts"><button class="btn primary" id="shareSend" type="button" data-en="Share…">Chia sẻ…</button><button class="btn" id="shareSave" type="button" data-en="Save image">Tải ảnh</button></div>
+  <p class="muted small" data-en="The image is drawn on your device and isn't sent anywhere. Books count once your reader syncs past 97%, or when you tick “Finished reading” under Edit.">Ảnh vẽ ngay trên máy bạn, không gửi đi đâu. Sách được tính khi máy đồng bộ tiến độ quá 97%, hoặc khi bạn tích “Đã đọc xong” trong hộp Sửa.</p>
 </aside>
 
 <!-- Tự dựng bản riêng -->
@@ -342,6 +363,7 @@
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <script type="module" src="/convert/convert.js"></script>
 <script src="/i18n.js"></script>
+<script src="/share.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

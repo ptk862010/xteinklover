@@ -133,3 +133,30 @@ test("nâng cấp v5 → v6 (như bản thật): sách cũ giữ nguyên, mặc 
   const row = raw.prepare("SELECT * FROM books WHERE id = 'old1'").get() as Record<string, unknown>;
   assert.deepEqual([row.title, row.cover, row.on_device, row.fetched_at, row.ko_hash, row.isbn], ["Hóa thân", 2, 1, 0, null, ""]);
 });
+
+test("đọc xong qua KOSync: ≥ 97% thì ghi ngày, chỉ lần đầu, đúng chủ, không phân biệt hoa thường", async () => {
+  const { d } = await setup();
+  const h = "c".repeat(32);
+  await db.setKoHash(d, "a1", h);
+  await db.markFinishedByHash(d, "u1", h.toUpperCase(), 0.5, NOW);
+  assert.equal(db.toMeta((await db.getBook(d, "u1", "a1"))!).finished, 0, "chưa đủ 97%");
+  await db.markFinishedByHash(d, "u2", h, 1, NOW);
+  assert.equal(db.toMeta((await db.getBook(d, "u1", "a1"))!).finished, 0, "người khác không ghi được");
+  await db.markFinishedByHash(d, "u1", h.toUpperCase(), 0.97, NOW);
+  assert.equal(db.toMeta((await db.getBook(d, "u1", "a1"))!).finished, NOW);
+  await db.markFinishedByHash(d, "u1", h, 1, NOW + 86400_000);
+  assert.equal(db.toMeta((await db.getBook(d, "u1", "a1"))!).finished, NOW, "mở đọc lại không làm xê dịch ngày");
+  // Sửa tay: đặt / bỏ
+  assert.equal(await db.updateBookMeta(d, "u1", "a2", { finished_at: NOW - 1000 }), true);
+  assert.equal(db.toMeta((await db.getBook(d, "u1", "a2"))!).finished, NOW - 1000);
+});
+
+test("nâng cấp v6 → v7: sách cũ chưa đọc xong", async () => {
+  const { DatabaseSync } = await import("node:sqlite");
+  const { MIGRATIONS } = await import("../src/schema");
+  const raw = new DatabaseSync(":memory:");
+  for (const group of MIGRATIONS.slice(0, 6)) for (const sql of group) raw.prepare(sql).run();
+  raw.prepare("INSERT INTO books (id, user_id, title, author, size, added, blob_key) VALUES ('old1','u1','Hóa thân','Kafka',611,'x','b:old1')").run();
+  for (const sql of MIGRATIONS[6]) raw.prepare(sql).run();
+  assert.equal((raw.prepare("SELECT finished_at FROM books WHERE id = 'old1'").get() as { finished_at: number }).finished_at, 0);
+});

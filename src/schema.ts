@@ -188,4 +188,6 @@ export const MIGRATIONS: string[][] = [
     `CREATE TRIGGER IF NOT EXISTS books_bytes_upd AFTER UPDATE OF size ON books
       BEGIN UPDATE stats SET value = MAX(value - OLD.size + NEW.size, 0) WHERE key = 'bytes'; END`,
   ],
+  // v7 — ngày đọc xong (ms, 0 = chưa): KOSync báo ≥ 97% thì ghi lần đầu, hoặc người dùng tự đặt. Dùng cho ảnh chia sẻ.
+  [`ALTER TABLE books ADD COLUMN finished_at INTEGER NOT NULL DEFAULT 0`],
 ];

@@ -758,6 +758,42 @@ test("đồng bộ: đổi mật khẩu thu hồi mã (trừ khi chọn giữ); 
   assert.equal((await fetch(BASE + "/users/auth", { headers: ko(name, code2) })).status, 401);
 });
 
+test("kệ + KOSync: mã KOReader tính lúc gửi, tiến độ hiện trên kệ, ≥ 97% thì ghi ngày đọc xong (chỉ lần đầu)", async () => {
+  const c = client();
+  const name = "doc" + Date.now().toString(36).slice(-4);
+  assert.equal((await c.req("/api/signup", { method: "POST", json: { username: name, proof: await proof(name, "matkhau-dai-1") }, headers: { "CF-Connecting-IP": "203.0.113.71" } })).status, 201);
+  const code = (await c.req("/api/sync-keys", { method: "POST", json: { name: "X4", proof: await proof(name, "matkhau-dai-1") } })).data.code;
+  const bytes = fakeEpub(20_000);
+  for (let i = 4; i < bytes.length; i++) bytes[i] = (i * 7) & 0xff;
+  const up = await uploadBook(c, "Hóa thân", bytes);
+  assert.equal(up.status, 201);
+  // Mã tài liệu kiểu KOReader: MD5 các mẫu 1 KB ở 0, 1K, 4K, 16K…
+  const h = createHash("md5");
+  for (const off of [0, 1024, 4096, 16384]) if (off < bytes.length) h.update(bytes.subarray(off, off + 1024));
+  const doc = h.digest("hex");
+  const K = { ...ko(name, code), "Content-Type": "application/json" };
+  const push = (pct) => fetch(BASE + "/syncs/progress", { method: "PUT", headers: K, body: JSON.stringify({ document: doc, progress: "/body/p[1]", percentage: pct, device: "X4", device_id: "X" }) });
+  const mine = async () => (await c.req("/api/books")).data.find((b) => b.id === up.data.book.id);
+  const waitFor = async (f) => { for (let i = 0; i < 30; i++) { const b = await mine(); if (f(b)) return b; await new Promise((r) => setTimeout(r, 100)); } return mine(); };
+
+  assert.equal((await push(0.4)).status, 200);
+  let b = await waitFor((x) => x.progress === 0.4);
+  assert.equal(b.progress, 0.4, "tiến độ khớp theo mã file");
+  assert.equal(b.finished, 0);
+  assert.equal((await push(0.98)).status, 200);
+  b = await waitFor((x) => x.finished > 0);
+  const first = b.finished;
+  assert.ok(first > 0, "đủ 97% thì có ngày đọc xong");
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal((await push(1)).status, 200);
+  await waitFor((x) => x.progress === 1);
+  assert.equal((await mine()).finished, first, "đọc lại không xê dịch ngày");
+  // Sửa tay: bỏ đánh dấu, đặt lại; ngày sai bị chặn
+  assert.equal((await c.req(`/api/books/${up.data.book.id}`, { method: "PATCH", json: { finished: 0 } })).status, 200);
+  assert.equal((await mine()).finished, 0);
+  assert.equal((await c.req(`/api/books/${up.data.book.id}`, { method: "PATCH", json: { finished: Date.now() + 10 * 86400_000 } })).status, 400);
+});
+
 test("route lạ và method sai", async () => {
   assert.equal((await A.req("/api/khongco")).status, 401);
   assert.equal((await B.req("/api/khongco")).status, 404);

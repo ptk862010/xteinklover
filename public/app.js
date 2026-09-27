@@ -87,6 +87,10 @@
     try { return await fn(); } finally { delete btn.dataset.busy; btn.disabled = false; btn.textContent = old; }
   }
 
+  function fmtDay(ms) { return new Date(ms).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "numeric" }); }
+  /** ms → "YYYY-MM-DD" theo giờ máy (cho input type=date) và ngược lại (giữa trưa, tránh lệch ngày do múi giờ) */
+  function toDateInput(ms) { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+  function fromDateInput(v) { const [y, m, d] = String(v).split("-").map(Number); return y && m && d ? new Date(y, m - 1, d, 12).getTime() : Date.now(); }
   function hue(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; }
   function fmtDate(iso) { const d = new Date(iso); return d.toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" }); }
   function fmtSize(b) {
@@ -521,7 +525,7 @@
     const id = esc(b.id);
     const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
     const p = pct(b);
-    const status = [b.onDevice && b.fetched ? L("✓ đã về máy", "✓ on reader") : "", p !== null ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
+    const status = [b.finished ? L(`✓ đọc xong ${fmtDay(b.finished)}`, `✓ finished ${fmtDay(b.finished)}`) : "", b.onDevice && b.fetched ? L("✓ đã về máy", "✓ on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
     return `<article class="book" data-id="${id}" draggable="true" data-drag="${id}" data-from="${esc(dragFrom())}">
       <div class="cover${img ? " has-img" : ""}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
         <button class="dev${b.onDevice ? " on" : ""}" type="button" data-dev="${id}" aria-pressed="${b.onDevice ? "true" : "false"}" title="${esc(L("Bật: máy đọc thấy cuốn này trong kệ OPDS", "On: your e-reader sees this book on its OPDS shelf"))}">${b.onDevice ? "⚡ " + L("Lên máy", "On device") : "＋ " + L("Lên máy", "Device")}</button>
@@ -540,6 +544,7 @@
       ...shelves.map((s) => chip("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)).length)),
       chip("authors", L("Theo tác giả", "By author")),
       `<button class="chip add" type="button" data-newshelf>＋ ${L("Tầng", "Shelf")}</button>`,
+      `<button class="chip" type="button" data-share>📤 ${L("Chia sẻ", "Share")}</button>`,
     ].join("");
     const tools = $("#shelfTools");
     const cur = view.startsWith("s:") ? shelves.find((s) => "s:" + s.id === view) : null;
@@ -558,10 +563,10 @@
     const h = hue(b.title);
     const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
     const p = pct(b);
-    const tip = [b.title, b.author, b.onDevice ? L("⚡ Lên máy", "⚡ On device") : "", b.onDevice && b.fetched ? L("đã về máy", "on reader") : "", p !== null ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
+    const tip = [b.title, b.author, b.finished ? L(`đọc xong ${fmtDay(b.finished)}`, `finished ${fmtDay(b.finished)}`) : "", b.onDevice ? L("⚡ Lên máy", "⚡ On device") : "", b.onDevice && b.fetched ? L("đã về máy", "on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
     // div role=button (không dùng <button>): Firefox không cho kéo phần tử button
     return `<div class="spine cover${img ? " has-img" : ""}" role="button" tabindex="0" draggable="true" data-drag="${esc(b.id)}" data-from="${esc(from)}" data-open="${esc(b.id)}" title="${esc(tip)}" aria-label="${esc(tip)}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
-      ${b.onDevice ? `<i class="bolt" aria-hidden="true">⚡</i>` : ""}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</div>`;
+      ${b.finished ? `<i class="done" aria-hidden="true">✓</i>` : ""}${b.onDevice ? `<i class="bolt" aria-hidden="true">⚡</i>` : ""}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</div>`;
   }
 
   /** Cả kệ: tầng Lên máy trên cùng, rồi các tầng tự tạo. Sách chưa phân loại không lên kệ, chỉ có dòng nhắc. */
@@ -705,6 +710,8 @@
     $("#bfNewShelf").value = "";
     $("#bfStatus").textContent = "";
     $("#bfDownload").href = "/books/" + encodeURIComponent(b.id) + ".epub";
+    $("#bfDone").checked = !!b.finished;
+    $("#bfDoneDate").value = toDateInput(b.finished || Date.now());
     renderShelfChecks(shelfOf(b));
     $("#coverTitleIn").value = b.title;
     $("#coverAuthorIn").value = b.author || "";
@@ -730,11 +737,11 @@
     if (!b) return;
     busy($("#bfSave"), L("Đang lưu…", "Saving…"), async () => {
       const title = $("#bfTitle").value.trim(), author = $("#bfAuthor").value.trim();
-      const patch = { title, author, isbn: $("#bfIsbn").value.trim(), onDevice: $("#bfDevice").checked, shelves: checkedShelves() };
+      const patch = { title, author, isbn: $("#bfIsbn").value.trim(), onDevice: $("#bfDevice").checked, shelves: checkedShelves(), finished: $("#bfDone").checked ? fromDateInput($("#bfDoneDate").value) : 0 };
       const renamed = title !== b.title || author !== (b.author || "");
       try {
         await api("/api/books/" + encodeURIComponent(b.id), { method: "PATCH", json: patch });
-        Object.assign(b, { title, author, isbn: patch.isbn.replace(/[\s-]/g, "").toUpperCase(), onDevice: patch.onDevice, shelves: patch.shelves });
+        Object.assign(b, { title, author, isbn: patch.isbn.replace(/[\s-]/g, "").toUpperCase(), onDevice: patch.onDevice, shelves: patch.shelves, finished: patch.finished });
         if ($("#bfWrite").checked && renamed) {
           $("#bfStatus").textContent = L("Đang ghi vào file…", "Writing into the file…");
           await writeMetaToFile(b, title, author);
@@ -762,6 +769,77 @@
     } catch (err) { $("#bfStatus").textContent = tr(err.message); }
   }));
   $("#bfNewShelf").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#bfAddShelf").click(); } });
+
+  // ── Chia sẻ sách đã đọc: ảnh vẽ bằng canvas (public/share.js) ──
+  let sharePeriod = "month";
+  let shareBlob = null;
+  let shareName = "sach-da-doc.png";
+  function openShare() {
+    const now = new Date();
+    if (!$("#shareFrom").value) $("#shareFrom").value = toDateInput(new Date(now.getFullYear(), now.getMonth(), 1).getTime());
+    if (!$("#shareTo").value) $("#shareTo").value = toDateInput(now.getTime());
+    openSheet("shareSheet");
+    drawShareImage();
+  }
+  async function drawShareImage() {
+    const S = window.XL_SHARE;
+    if (!S) return;
+    let range;
+    if (sharePeriod === "custom") {
+      const from = fromDateInput($("#shareFrom").value), to = fromDateInput($("#shareTo").value);
+      const a = new Date(Math.min(from, to)), z = new Date(Math.max(from, to));
+      range = { from: new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime(), to: new Date(z.getFullYear(), z.getMonth(), z.getDate() + 1).getTime(), label: `${fmtDay(a.getTime())} – ${fmtDay(z.getTime())}` };
+    } else range = S.periodRange(sharePeriod, new Date(), lang);
+    const list = S.finishedIn(books, range.from, range.to);
+    const who = me?.user?.username || "";
+    const my = ++shareDraw;
+    $("#shareNote").textContent = L("Đang vẽ…", "Drawing…");
+    await S.drawShare($("#shareCanvas"), {
+      title: range.label,
+      subtitle: list.length ? L(`${who} đọc xong ${list.length} cuốn`, `${who} finished ${list.length} ${list.length === 1 ? "book" : "books"}`) : who,
+      books: list,
+      loadCover: async (b) => {
+        if (!b.cover) return null;
+        const r = await fetch(`/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}`, { credentials: "same-origin" });
+        return r.ok ? createImageBitmap(await r.blob()) : null;
+      },
+      dateFmt: (ms) => new Date(ms).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit" }),
+      empty: L("Chưa có cuốn nào đọc xong trong khoảng này.", "No books finished in this period."),
+      more: (n) => L(`… và ${n} cuốn nữa`, `… and ${n} more`),
+      footer: L("Kệ sách trên ", "Bookshelf on ") + location.host,
+      lang,
+    });
+    if (my !== shareDraw) return;
+    shareName = `sach-da-doc-${range.label.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}.png`;
+    shareBlob = await new Promise((res) => $("#shareCanvas").toBlob(res, "image/png"));
+    $("#shareNote").textContent = list.length ? "" : L("Tích “Đã đọc xong” trong hộp Sửa cho sách bạn đọc ở chỗ khác.", "Tick “Finished reading” under Edit for books you read elsewhere.");
+  }
+  let shareDraw = 0;
+  $("#sharePeriods").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-period]");
+    if (!b) return;
+    sharePeriod = b.dataset.period;
+    document.querySelectorAll("#sharePeriods .chip").forEach((x) => x.classList.toggle("on", x === b));
+    $("#shareCustom").hidden = sharePeriod !== "custom";
+    drawShareImage();
+  });
+  ["#shareFrom", "#shareTo"].forEach((s) => $(s).addEventListener("change", drawShareImage));
+  function saveShare() {
+    if (!shareBlob) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(shareBlob);
+    a.download = shareName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  $("#shareSave").addEventListener("click", saveShare);
+  $("#shareSend").addEventListener("click", async () => {
+    if (!shareBlob) return;
+    const file = new File([shareBlob], shareName, { type: "image/png" });
+    if (navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: L("Sách đã đọc", "Books I've read") }); } catch { /* người dùng hủy */ }
+    } else { saveShare(); toast(L("Máy này không có bảng chia sẻ, đã tải ảnh về", "No share sheet here, image saved instead")); }
+  });
 
   // ── Kéo thả: kéo sách thả vào thẻ tầng / tầng trên tủ (máy tính; điện thoại dùng hộp Sửa) ──
   const DRAG_TYPE = "text/x-xl-book";
@@ -845,6 +923,7 @@
     const v = e.target.closest("[data-view]")?.dataset.view;
     if (v) return setView(v);
     if (e.target.closest("[data-newshelf]")) { shelfTool = "new"; renderBar(); }
+    if (e.target.closest("[data-share]")) openShare();
   });
   async function saveShelfTool() {
     const name = $("#shelfName").value.trim();

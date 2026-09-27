@@ -17,6 +17,7 @@ export const SHELVES_PER_USER = 50;
 const SHELF_NAME_MAX = 40;
 const SHELF_ID_RE = /^[a-z0-9]{1,32}$/;
 const BAD = "Dữ liệu không hợp lệ";
+const FINISHED_MIN = Date.UTC(2000, 0, 1);
 
 function isIsbn(s: string): boolean {
   if (/^\d{13}$/.test(s)) return [...s].reduce((a, c, i) => a + Number(c) * (i % 2 ? 3 : 1), 0) % 10 === 0;
@@ -31,7 +32,7 @@ export function parseShelfName(v: unknown): string | null {
 }
 
 /** Body của PATCH /api/books/:id → phần sửa cho bảng books + danh sách tầng (nếu có), hoặc thông báo lỗi. */
-export function parseBookPatch(body: unknown): { patch: db.BookPatch; shelves: string[] | undefined } | string {
+export function parseBookPatch(body: unknown, now = Date.now()): { patch: db.BookPatch; shelves: string[] | undefined } | string {
   if (!body || typeof body !== "object" || Array.isArray(body)) return BAD;
   const b = body as Record<string, unknown>;
   const patch: db.BookPatch = {};
@@ -54,6 +55,12 @@ export function parseBookPatch(body: unknown): { patch: db.BookPatch; shelves: s
   if (b.onDevice !== undefined) {
     if (typeof b.onDevice !== "boolean") return BAD;
     patch.on_device = b.onDevice ? 1 : 0;
+  }
+  if (b.finished !== undefined) {
+    // 0 = bỏ đánh dấu; còn lại là mốc ms từ năm 2000 tới mai (lệch múi giờ)
+    const f = b.finished;
+    if (typeof f !== "number" || !Number.isInteger(f) || (f !== 0 && (f < FINISHED_MIN || f > now + 2 * 86400_000))) return "Ngày đọc xong không hợp lệ";
+    patch.finished_at = f;
   }
   let shelves: string[] | undefined;
   if (b.shelves !== undefined) {

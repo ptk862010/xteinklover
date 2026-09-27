@@ -227,8 +227,11 @@ export async function kosync(req: Request, env: Env, ctx: ExecutionContext, path
   }
   const counted = () => ctx.waitUntil(db.hitAttempts(env.DB, writeKeys, nowSec).catch(() => undefined));
 
+  // Đủ ngưỡng thì ghi ngày đọc xong cho cuốn tương ứng trên kệ (chạy nền, lỗi cũng không ảnh hưởng đồng bộ)
+  const finished = () => ctx.waitUntil(db.markFinishedByHash(env.DB, auth.user.id, p.document, p.percentage, Date.now()).catch(() => undefined));
   if (await db.updateSyncProgress(env.DB, auth.user.id, p, nowSec)) {
     counted();
+    finished();
     return kjson({ document: p.document, timestamp: nowSec });
   }
 
@@ -240,6 +243,7 @@ export async function kosync(req: Request, env: Env, ctx: ExecutionContext, path
   // false = mã vừa bị thu hồi / tài khoản vừa bị xóa giữa chừng
   if (!(await db.insertSyncProgress(env.DB, auth.user.id, p, nowSec, lim.maxSyncDocs))) return unauthorized();
   counted();
+  finished();
   return kjson({ document: p.document, timestamp: nowSec });
 }
 
