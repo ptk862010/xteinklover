@@ -26,6 +26,8 @@ export interface Env {
   GOOGLE_TOKEN_URL?: string;
   /** Khóa Google Books API (secret, không bắt buộc): tìm bìa sách. Thiếu thì chỉ tìm trên Open Library. */
   GOOGLE_BOOKS_KEY?: string;
+  /** "1" = hiện nút "Đổ kệ xuống máy" (chép sách qua File Transfer của CrossPoint). Bản tự chạy trong mạng nhà bật sẵn. */
+  DEVICE_PUSH?: string;
   /** "1" = hiện nút "Tự dựng" / Deploy to Cloudflare (chỉ bản chung của tác giả). Bản tự dựng để trống. */
   SHOW_SELF_HOST?: string;
   /** Chỉ dùng cho test tích hợp: cho "Dán link" lấy trang từ 127.0.0.1 / localhost. */

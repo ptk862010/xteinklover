@@ -543,6 +543,7 @@
       chip("authors", L("Theo tác giả", "By author")),
       `<button class="chip add" type="button" data-newshelf>＋ ${L("Tầng", "Shelf")}</button>`,
       `<button class="chip" type="button" data-share>📤 ${L("Chia sẻ", "Share")}</button>`,
+      cfg.devicePush ? `<button class="chip" type="button" data-push>📲 ${L("Đổ xuống máy", "Copy to reader")}</button>` : "",
     ].join("");
     const tools = $("#shelfTools");
     const cur = view.startsWith("s:") ? shelves.find((s) => "s:" + s.id === view) : null;
@@ -582,7 +583,7 @@
       return;
     }
     $("#books").innerHTML = `<div class="case">`
-      + shelves.map((s) => tier("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)), L("Tầng trống. Kéo sách vào đây, hoặc mở một cuốn và tích tầng này.", "Empty. Drag books here, or open a book and tick this shelf."))).join("")
+      + shelves.map((s) => tier("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)), L("Tầng trống. Kéo sách vào đây, hoặc mở một cuốn và chọn tầng này.", "Empty. Drag books here, or open a book and pick this shelf."))).join("")
       + `</div><p class="case-hint">${esc(L("Máy đọc thấy đúng các tầng này: mỗi tầng là một thư mục trong kệ OPDS. Sách Chưa phân loại thì máy không thấy.", "Your e-reader sees exactly these shelves, each as a folder in its OPDS catalog. Unsorted books stay off the reader."))}</p>`;
   }
 
@@ -690,13 +691,18 @@
   let coverFor = null;
   let coverCands = [];
 
-  // ── Sửa sách: thông tin, Lên máy, tầng, ghi vào file ──
+  // ── Sửa sách: thông tin, tầng (mỗi cuốn một tầng, như tủ sách thật), ghi vào file ──
   function renderShelfChecks(checked) {
+    const cur = checked[0] || "";
+    const opt = (id, name) => `<label><input type="radio" name="bfShelf" value="${esc(id)}"${cur === id ? " checked" : ""}>${esc(name)}</label>`;
     $("#bfShelves").innerHTML = shelves.length
-      ? shelves.map((s) => `<label><input type="checkbox" value="${esc(s.id)}"${checked.includes(s.id) ? " checked" : ""}>${esc(s.name)}</label>`).join("")
+      ? opt("", L("Chưa phân loại", "Unsorted")) + shelves.map((s) => opt(s.id, s.name)).join("")
       : `<span class="muted small">${esc(L("Chưa có tầng nào. Gõ tên ở dưới để tạo.", "No shelves yet. Type a name below to create one."))}</span>`;
   }
-  const checkedShelves = () => [...document.querySelectorAll("#bfShelves input:checked")].map((x) => x.value);
+  const checkedShelves = () => {
+    const v = document.querySelector("#bfShelves input:checked")?.value;
+    return v ? [v] : [];
+  };
 
   function openBook(id) {
     const b = books.find((x) => x.id === id);
@@ -764,14 +770,16 @@
     const name = $("#bfNewShelf").value.trim();
     if (!name) return $("#bfNewShelf").focus();
     try {
-      const keep = checkedShelves();
       const s = await createShelf(name);
-      renderShelfChecks([...keep, s.id]);
+      renderShelfChecks([s.id]);
       $("#bfNewShelf").value = "";
       render();
     } catch (err) { $("#bfStatus").textContent = tr(err.message); }
   }));
   $("#bfNewShelf").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#bfAddShelf").click(); } });
+
+  // ── Đổ kệ xuống máy đọc qua File Transfer của CrossPoint (public/devicepush.js, bản tự chạy) ──
+  window.XL_PUSH?.mountUi({ $, L, esc, tr, toast, busy, api, books: () => books, shelves: () => shelves, render });
 
   // ── Chia sẻ sách đã đọc: ảnh vẽ bằng canvas (public/share.js) ──
   let sharePeriod = "month";
@@ -899,13 +907,14 @@
     const fromShelf = from.startsWith("s:") ? from.slice(2) : "";
     let patch, msg;
     if (key === "unsorted") {
-      if (fromShelf) { patch = { shelves: shelfOf(b).filter((x) => x !== fromShelf) }; msg = L(`Đã gỡ “${b.title}” khỏi tầng ${shelfName(fromShelf)}`, `Took “${b.title}” off ${shelfName(fromShelf)}`); }
+      if (fromShelf) { patch = { shelves: [] }; msg = L(`Đã gỡ “${b.title}” khỏi tầng ${shelfName(fromShelf)}`, `Took “${b.title}” off ${shelfName(fromShelf)}`); }
       else return toast(L("Kéo từ một tầng thả vào đây để gỡ sách khỏi tầng đó", "Drag from a shelf to here to take a book off it"));
     } else {
       const to = key.slice(2);
-      if (shelfOf(b).includes(to) && !fromShelf) return toast(L(`“${b.title}” đã ở tầng ${shelfName(to)}`, `“${b.title}” is already on ${shelfName(to)}`));
-      patch = { shelves: [...new Set([...shelfOf(b).filter((x) => x !== fromShelf), to])] };
-      msg = fromShelf ? L(`Đã chuyển “${b.title}” sang ${shelfName(to)}`, `Moved “${b.title}” to ${shelfName(to)}`) : L(`Đã xếp “${b.title}” vào ${shelfName(to)}`, `Put “${b.title}” on ${shelfName(to)}`);
+      if (shelfOf(b).includes(to)) return toast(L(`“${b.title}” đã ở tầng ${shelfName(to)}`, `“${b.title}” is already on ${shelfName(to)}`));
+      const was = shelfOf(b)[0];
+      patch = { shelves: [to] };
+      msg = was ? L(`Đã chuyển “${b.title}” sang ${shelfName(to)}`, `Moved “${b.title}” to ${shelfName(to)}`) : L(`Đã xếp “${b.title}” vào ${shelfName(to)}`, `Put “${b.title}” on ${shelfName(to)}`);
     }
     try {
       await api("/api/books/" + encodeURIComponent(id), { method: "PATCH", json: patch });
@@ -921,6 +930,7 @@
     if (v) return setView(v);
     if (e.target.closest("[data-newshelf]")) { shelfTool = "new"; renderBar(); }
     if (e.target.closest("[data-share]")) openShare();
+    if (e.target.closest("[data-push]")) openSheet("pushSheet");
   });
   async function saveShelfTool() {
     const name = $("#shelfName").value.trim();

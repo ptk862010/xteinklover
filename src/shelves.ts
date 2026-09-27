@@ -64,9 +64,14 @@ export function parseBookPatch(body: unknown, now = Date.now()): { patch: db.Boo
   }
   let shelves: string[] | undefined;
   if (b.shelves !== undefined) {
-    if (!Array.isArray(b.shelves) || b.shelves.length > db.SHELVES_MAX_HARD) return BAD;
-    if (!b.shelves.every((s) => typeof s === "string" && SHELF_ID_RE.test(s))) return BAD;
+    if (!Array.isArray(b.shelves) || !b.shelves.every((s) => typeof s === "string" && SHELF_ID_RE.test(s))) return BAD;
     shelves = [...new Set(b.shelves as string[])];
+    if (shelves.length > 1) return "Mỗi cuốn chỉ nằm ở một tầng";
+  }
+  if (b.fetched !== undefined) {
+    // Web vừa chép thẳng file xuống máy đọc (bản tự chạy, File Transfer của CrossPoint)
+    if (b.fetched !== true) return BAD;
+    patch.fetched_at = now;
   }
   return { patch, shelves };
 }
@@ -76,7 +81,7 @@ async function underEditLimit(env: Env, user: db.UserRow): Promise<boolean> {
 }
 const tooMany = () => error(429, "Sửa quá nhiều, thử lại sau");
 
-/** PATCH /api/books/:id {title?, author?, isbn?, onDevice?, shelves?} — chỉ sửa trên kệ, không đụng file. */
+/** PATCH /api/books/:id {title?, author?, isbn?, onDevice?, finished?, shelves?: [] | [id], fetched?: true} — chỉ sửa trên kệ, không đụng file. */
 export async function patchBook(req: Request, env: Env, user: db.UserRow, id: string): Promise<Response> {
   const parsed = parseBookPatch(await readJson(req));
   if (typeof parsed === "string") return error(400, parsed);

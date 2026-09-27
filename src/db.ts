@@ -284,11 +284,12 @@ export interface BookPatch {
   isbn?: string;
   on_device?: number;
   finished_at?: number;
+  fetched_at?: number;
 }
 
 /** Sửa thông tin trên kệ (không đụng file). false = không có sách này hoặc không phải của người này. */
 export async function updateBookMeta(db: D1Database, userId: string, id: string, p: BookPatch): Promise<boolean> {
-  const cols = (["title", "author", "isbn", "on_device", "finished_at"] as const).filter((k) => p[k] !== undefined);
+  const cols = (["title", "author", "isbn", "on_device", "finished_at", "fetched_at"] as const).filter((k) => p[k] !== undefined);
   if (!cols.length) return (await getBook(db, userId, id)) !== null;
   const r = await db
     .prepare(`UPDATE books SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ? AND user_id = ?`)
@@ -297,10 +298,10 @@ export async function updateBookMeta(db: D1Database, userId: string, id: string,
   return r.meta.changes > 0;
 }
 
-/** Đặt lại toàn bộ tầng của một cuốn (bỏ qua id tầng lạ / của người khác). false = không có sách. */
+/** Đặt tầng của một cuốn: mỗi cuốn một tầng, [] = Chưa phân loại (bỏ qua id tầng lạ / của người khác). false = không có sách. */
 export async function setBookShelves(db: D1Database, userId: string, bookId: string, shelfIds: string[]): Promise<boolean> {
   if (!(await getBook(db, userId, bookId))) return false;
-  const ids = [...new Set(shelfIds)].slice(0, SHELVES_MAX_HARD);
+  const ids = shelfIds.slice(0, 1);
   const stmts = [db.prepare("DELETE FROM book_shelves WHERE book_id = ? AND user_id = ?").bind(bookId, userId)];
   if (ids.length) {
     stmts.push(

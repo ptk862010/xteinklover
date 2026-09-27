@@ -248,7 +248,7 @@
     <label class="field"><span>ISBN</span><input id="bfIsbn" class="input" inputmode="numeric" maxlength="20" autocomplete="off"></label>
     <label class="check"><input type="checkbox" id="bfWrite"><span id="bfWriteNote"></span></label>
     <div class="check done-row"><input type="checkbox" id="bfDone" aria-labelledby="bfDoneLabel"><span id="bfDoneLabel" data-en="Finished reading on">Đã đọc xong ngày</span><input type="date" id="bfDoneDate" class="input" aria-label="Ngày đọc xong" data-en-aria-label="Finish date"></div>
-    <div class="field"><span data-en="Shelves">Tầng</span>
+    <div class="field"><span data-en="Shelf">Tầng</span>
       <div id="bfShelves" class="shelf-checks"></div>
       <div class="new-shelf"><input id="bfNewShelf" class="input" maxlength="40" placeholder="Tầng mới, vd Văn học" data-en-placeholder="New shelf, e.g. Fiction" aria-label="Tầng mới" data-en-aria-label="New shelf"><button class="btn" id="bfAddShelf" type="button" data-en="Add">Thêm</button></div>
     </div>
@@ -286,6 +286,18 @@
   <p class="muted small" id="shareNote" aria-live="polite"></p>
   <div class="sheet-acts"><button class="btn primary" id="shareSend" type="button" data-en="Share…">Chia sẻ…</button><button class="btn" id="shareSave" type="button" data-en="Save image">Tải ảnh</button></div>
   <p class="muted small" data-en="The image is drawn on your device and isn't sent anywhere. Books count once your reader syncs past 97%, or when you tick “Finished reading” under Edit.">Ảnh vẽ ngay trên máy bạn, không gửi đi đâu. Sách được tính khi máy đồng bộ tiến độ quá 97%, hoặc khi bạn tích “Đã đọc xong” trong hộp Sửa.</p>
+</aside>
+
+<!-- Đổ kệ xuống máy đọc (bản tự chạy): chép thẳng qua File Transfer của CrossPoint -->
+<aside class="sheet" id="pushSheet" hidden role="dialog" aria-modal="true" aria-labelledby="pushTitle">
+  <div class="sheet-head"><h3 id="pushTitle" data-en="Copy shelves to the reader">Đổ kệ xuống máy đọc</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
+  <p class="muted small" data-en-html="On the reader: <b>File Transfer</b> → join your home Wi-Fi (same network as this server). Each shelf becomes a folder in <b>/Sach</b>, books go in as “Author - Title.epub”.">Trên máy đọc: mở <b>File Transfer</b> → vào WiFi nhà (cùng mạng với máy chạy Xteink Lover). Mỗi tầng thành một thư mục trong <b>/Sach</b>, sách đặt tên “Tác giả - Tên sách.epub”.</p>
+  <p class="muted small warn" id="pushHttps" hidden data-en="This page is open over https, so the browser blocks calls to the reader (http). Open it by its http address on your home network, e.g. http://192.168.1.10:8787.">Trang đang mở bằng https nên trình duyệt chặn gọi máy đọc (http). Mở trang bằng địa chỉ http trong mạng nhà, vd http://192.168.1.10:8787.</p>
+  <div class="new-shelf"><input id="pushHost" class="input" inputmode="url" autocomplete="off" placeholder="IP trên màn hình máy, vd 192.168.1.50" data-en-placeholder="IP on the reader's screen, e.g. 192.168.1.50" aria-label="Địa chỉ máy đọc" data-en-aria-label="Reader address"><button class="btn" id="pushScan" type="button" data-en="Check">Kiểm tra</button></div>
+  <div id="pushPlan" class="push-plan"></div>
+  <p class="muted small" id="pushNote" aria-live="polite"></p>
+  <div class="sheet-acts"><button class="btn primary" id="pushRun" type="button" hidden data-en="Start copying">Bắt đầu chép</button></div>
+  <p class="muted small" data-en="Only folders named after a shelf are touched; your other folders stay as they are. Nothing is deleted unless you tick it.">Chỉ đụng tới thư mục mang tên tầng, thư mục khác của bạn để yên. Không xóa gì trừ khi bạn tích.</p>
 </aside>
 
 <!-- Tự dựng bản riêng -->
@@ -363,6 +375,7 @@
 <script type="module" src="/convert/convert.js"></script>
 <script src="/i18n.js"></script>
 <script src="/share.js"></script>
+<script src="/devicepush.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

@@ -80,12 +80,32 @@ export interface Assets {
   fetch(req: Request): Promise<Response>;
 }
 
-export function createAssets(root: string): Assets {
+/** Thêm nguồn vào một chỉ thị CSP (vd connect-src), giữ nguyên các chỉ thị khác. */
+export function extendCsp(csp: string, directive: string, source: string): string {
+  const parts = csp.split(";").map((p) => p.trim()).filter(Boolean);
+  const i = parts.findIndex((p) => p.split(/\s+/)[0] === directive);
+  if (i < 0) return [...parts, `${directive} ${source}`].join("; ");
+  return parts.map((p, j) => (j === i ? `${p} ${source}` : p)).join("; ");
+}
+
+export interface AssetOptions {
+  /** Nguồn thêm vào connect-src của CSP trong _headers (bản tự chạy: "http:" để trang gọi được máy đọc trong mạng nhà). */
+  connectSrc?: string;
+}
+
+export function createAssets(root: string, opts: AssetOptions = {}): Assets {
   let rules: HeaderRule[] = [];
   try {
     rules = parseHeadersFile(readFileSync(join(root, "_headers"), "utf8"));
   } catch {
     /* không có _headers */
+  }
+  if (opts.connectSrc) {
+    const src = opts.connectSrc;
+    rules = rules.map((r) => ({
+      ...r,
+      headers: r.headers.map(([k, v]): [string, string] => (k.toLowerCase() === "content-security-policy" ? [k, extendCsp(v, "connect-src", src)] : [k, v])),
+    }));
   }
   const gzCache = new Map<string, { etag: string; body: Uint8Array }>();
 

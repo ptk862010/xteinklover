@@ -88,7 +88,7 @@ let code = 1;
 process.on("SIGINT", () => cleanup().then(() => process.exit(130)));
 try {
   await waitReady();
-  const t = spawn(process.execPath, ["--test", "tests/e2e/api.e2e.mjs"], { stdio: "inherit", env: { ...process.env, BASE: `http://127.0.0.1:${PORT}` } });
+  const t = spawn(process.execPath, ["--test", "tests/e2e/api.e2e.mjs"], { stdio: "inherit", env: { ...process.env, BASE: `http://127.0.0.1:${PORT}`, E2E_NODE: NODE ? "1" : "" } });
   code = await new Promise((res) => t.on("exit", res));
 } catch (e) {
   console.error(e.message);

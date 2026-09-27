@@ -296,3 +296,11 @@ code.key.fresh { background: color-mix(in srgb, var(--accent) 16%, transparent);
 .sync-help .steps { margin: 6px 0 0; gap: 8px; }
 .check { display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
 .check input { margin-top: 3px; }
+
+/* Đổ kệ xuống máy đọc */
+.push-plan p { margin: 6px 0; }
+.push-sum { margin: 4px 0 8px; padding-left: 18px; }
+.push-list { max-height: 180px; overflow: auto; margin: 6px 0; padding-left: 18px; font-size: 13px; word-break: break-word; }
+.push-dels { display: grid; gap: 4px; max-height: 160px; overflow: auto; margin-bottom: 6px; font-size: 13px; word-break: break-word; }
+.warn { color: var(--danger, #d9534f); }
+.new-shelf .btn { white-space: nowrap; flex: none; }

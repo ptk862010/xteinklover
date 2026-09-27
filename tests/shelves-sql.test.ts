@@ -38,14 +38,17 @@ test("tầng: tạo (trùng tên / quá số lượng bị chặn), đổi tên,
   assert.equal(await db.createShelf(d, { id: "s4", user_id: "u1", name: "Thừa", created_at: NOW }, 3), "full");
   assert.equal(await db.createShelf(d, { id: "x1", user_id: "u2", name: "Văn học", created_at: NOW }, 3), "ok", "người khác đặt trùng tên được");
 
-  assert.equal(await db.setBookShelves(d, "u1", "a1", ["s1", "s2", "x1", "khongco"]), true);
+  assert.equal(await db.setBookShelves(d, "u1", "a1", ["x1"]), true);
+  assert.deepEqual((await db.listBooks(d, "u1")).map(db.toMeta).find((b) => b.id === "a1")!.shelves, [], "tầng của người khác bị bỏ qua");
+  assert.equal(await db.setBookShelves(d, "u1", "a1", ["s1"]), true);
+  assert.equal(await db.setBookShelves(d, "u1", "a1", ["s2", "s1"]), true, "mỗi cuốn một tầng: lấy tầng đầu, bỏ tầng cũ");
   assert.equal(await db.setBookShelves(d, "u1", "a2", ["s1"]), true);
   assert.equal(await db.setBookShelves(d, "u1", "b1", ["s1"]), false, "không gán được sách người khác");
   const a1 = (await db.listBooks(d, "u1")).map(db.toMeta).find((b) => b.id === "a1")!;
-  assert.deepEqual([...(a1.shelves ?? [])].sort(), ["s1", "s2"], "tầng của người khác và tầng lạ bị bỏ qua");
+  assert.deepEqual(a1.shelves, ["s2"]);
 
   const shelves = await db.listShelves(d, "u1");
-  assert.deepEqual(shelves.map((s) => [s.id, s.count]), [["s2", 1], ["s3", 0], ["s1", 2]], "xếp theo tên");
+  assert.deepEqual(shelves.map((s) => [s.id, s.count]), [["s2", 1], ["s3", 0], ["s1", 1]], "xếp theo tên");
   assert.equal(await db.renameShelf(d, "u1", "s3", "Higashino Keigo"), "exists");
   assert.equal(await db.renameShelf(d, "u1", "s3", "Kinh tế"), "ok");
   assert.equal(await db.renameShelf(d, "u2", "s3", "Cướp"), "missing");
@@ -166,4 +169,21 @@ test("nâng cấp v6 → v7: sách cũ chưa đọc xong", async () => {
   raw.prepare("INSERT INTO books (id, user_id, title, author, size, added, blob_key) VALUES ('old1','u1','Hóa thân','Kafka',611,'x','b:old1')").run();
   for (const sql of MIGRATIONS[6]) raw.prepare(sql).run();
   assert.equal((raw.prepare("SELECT finished_at FROM books WHERE id = 'old1'").get() as { finished_at: number }).finished_at, 0);
+});
+
+test("nâng cấp v7 → v8: cuốn nằm nhiều tầng chỉ giữ tầng xếp vào đầu tiên; sau đó DB không cho hai tầng", async () => {
+  const { DatabaseSync } = await import("node:sqlite");
+  const { MIGRATIONS } = await import("../src/schema");
+  const raw = new DatabaseSync(":memory:");
+  for (const group of MIGRATIONS.slice(0, 7)) for (const sql of group) raw.prepare(sql).run();
+  const put = raw.prepare("INSERT INTO book_shelves (book_id, shelf_id, user_id) VALUES (?, ?, 'u1')");
+  put.run("a1", "s2");
+  put.run("a1", "s1");
+  put.run("a2", "s1");
+  for (const sql of MIGRATIONS[7]) raw.prepare(sql).run();
+  assert.deepEqual(raw.prepare("SELECT book_id, shelf_id FROM book_shelves ORDER BY book_id").all().map((r) => ({ ...r })), [
+    { book_id: "a1", shelf_id: "s2" },
+    { book_id: "a2", shelf_id: "s1" },
+  ]);
+  assert.throws(() => put.run("a2", "s3"), /UNIQUE/);
 });

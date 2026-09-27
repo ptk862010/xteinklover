@@ -71,6 +71,7 @@ Mở `http://<IP máy này>:8787` → **Tạo tài khoản** → nhập mã mờ
 - **Hạn mức** nới hơn bản Cloudflare (5.000 MB mỗi người, 300 lượt gửi mỗi ngày), đổi được bằng biến môi trường giống bảng [Cấu hình](#cấu-hình-vars-trong-wranglertoml), thêm vào phần `environment` của `docker-compose.yml`. Một file vẫn tối đa 25 MB.
 - **Sao lưu**: `docker compose cp xteinklover:/data ./backup` (nên dừng trước: `docker compose stop`).
 - **Cập nhật**: `git pull && docker compose up -d --build`. Bảng dữ liệu tự nâng cấp ở request đầu tiên.
+- **Đổ kệ xuống máy** (chỉ bản tự chạy): trên máy đọc mở **File Transfer**, trên web bấm **📲 Đổ xuống máy**, gõ IP hiện trên màn hình máy. Trình duyệt chép thẳng sách vào thẻ nhớ, mỗi tầng một thư mục `/Sach/<Tầng>/`, tên file "Tác giả - Tên sách.epub": chép cuốn còn thiếu, chép lại cuốn đã đổi file, chuyển thư mục khi đổi tầng. File trên máy không còn trên kệ thì liệt kê để bạn tích xóa, không tự xóa. Chỉ đụng tới thư mục mang tên tầng. Trang phải mở bằng địa chỉ `http://` trong mạng nhà (trang `https` bị trình duyệt chặn gọi sang máy đọc). Để gọi được máy, bản tự chạy nới CSP `connect-src` thêm `http:`; không dùng tính năng này thì đặt `DEVICE_PUSH=0` để giữ CSP chặt như bản Cloudflare.
 - Không dùng Docker: cần Node ≥ 22.16, chạy `npm install && npm run build:node`, rồi `SIGNUP_CODE=... node dist/server.mjs` (biến `DATA_DIR`, `PORT`, `HOST` đổi được thư mục dữ liệu và cổng).
 
 ### Đăng nhập bằng Google (không bắt buộc)
@@ -119,9 +120,9 @@ npx wrangler secret put GOOGLE_BOOKS_KEY
 ### Sắp xếp kệ: tầng, OPDS theo tầng, tiến độ đọc
 
 - **Kệ sách** (màn hình mặc định, đứng cạnh thẻ **Chưa phân loại**): tủ trưng bày, mỗi tầng một hoặc vài hàng bìa trên tấm ván, tên tầng khắc trên biển đồng. Bấm bìa để sửa, tải hoặc xóa; bấm biển tên hoặc thẻ phía trên để xem riêng một tầng.
-- **Tầng**: tự đặt (Văn học, Trinh thám, "Đọc lại"…), một cuốn nằm được nhiều tầng. Xóa tầng không xóa sách.
+- **Tầng**: tự đặt (Văn học, Trinh thám, "Đọc lại"…). Mỗi cuốn nằm ở một tầng, như tủ sách thật. Xóa tầng không xóa sách (sách về Chưa phân loại).
 - **Máy đọc thấy đúng kệ sách**: đã đóng tầng thì `/opds` là danh sách tầng (CrossPoint hiện như thư mục), mở tầng mới thấy sách. Sách **Chưa phân loại** (chưa lên tầng nào) thì máy không thấy. Chưa đóng tầng nào thì máy thấy tất cả sách như trước. File tải về vẫn nằm chung một thư mục do máy quyết định (CrossPoint: Settings → OPDS → thư mục tải về).
-- **Kéo thả** (máy tính): kéo một cuốn thả vào thẻ tầng hoặc tầng trên tủ là xếp vào (kéo từ tầng khác thì là chuyển tầng); thả vào **Chưa phân loại** là gỡ khỏi tầng vừa rời. Điện thoại dùng hộp Sửa.
+- **Kéo thả** (máy tính): kéo một cuốn thả vào thẻ tầng hoặc tầng trên tủ là chuyển sang tầng đó; thả vào **Chưa phân loại** là gỡ khỏi tầng. Điện thoại dùng hộp Sửa.
 - **Sửa**: tên, tác giả, ISBN, tầng, đã đọc xong. Tùy chọn ghi luôn tên, tác giả vào file EPUB (trình duyệt sửa `content.opf` rồi gửi lại, tốn một lượt gửi trong ngày). Máy đã tải bản cũ thì phải tải lại, và tiến độ đồng bộ của file mới bắt đầu lại (KOSync nhận sách theo nội dung file), nên với cuốn đã về máy, ô này mặc định tắt.
 - **Đã về máy**: máy đọc tải file bằng khóa OPDS thì thẻ sách hiện "✓ đã về máy".
 - **Đọc xong + Chia sẻ**: máy đồng bộ tiến độ quá 97% thì ghi ngày đọc xong (chỉ lần đầu); sách đọc chỗ khác thì tích **Đã đọc xong** trong hộp Sửa. Nút **📤 Chia sẻ** vẽ ảnh 1080 × 1350 (tủ trưng bày với bìa các cuốn đã đọc trong tháng này, tháng trước, năm nay, năm trước hoặc khoảng tự chọn), vẽ ngay trên trình duyệt, không gửi đi đâu.
@@ -275,7 +276,7 @@ echo "SIGNUP_CODE=pick-a-word" > .env
 docker compose up -d
 ```
 
-Open `http://<this machine's IP>:8787` → **Create account**. On the reader, the OPDS URL is `http://<IP>:8787/opds` and the sync server is `http://<IP>:8787`. The reader must be on the same network; to use it from outside, put it behind HTTPS (Cloudflare Tunnel with `TRUST_PROXY=cloudflare`, Tailscale, or a reverse proxy such as Caddy with `TRUST_PROXY=1`). Leave `TRUST_PROXY` empty if the port is exposed directly. Limits are higher than on Cloudflare (5,000 MB per user) and can be changed with the same environment variables. Without Docker: Node ≥ 22.16, `npm install && npm run build:node`, then `SIGNUP_CODE=... node dist/server.mjs`.
+Open `http://<this machine's IP>:8787` → **Create account**. On the reader, the OPDS URL is `http://<IP>:8787/opds` and the sync server is `http://<IP>:8787`. The reader must be on the same network; to use it from outside, put it behind HTTPS (Cloudflare Tunnel with `TRUST_PROXY=cloudflare`, Tailscale, or a reverse proxy such as Caddy with `TRUST_PROXY=1`). Leave `TRUST_PROXY` empty if the port is exposed directly. **Copy to reader** (self-host only): open *File Transfer* on the reader, press 📲 on the web page and type the reader's IP; the browser copies each shelf into its own folder `/Sach/<shelf>/` on the SD card (open the page over `http://` on your LAN). Limits are higher than on Cloudflare (5,000 MB per user) and can be changed with the same environment variables. Without Docker: Node ≥ 22.16, `npm install && npm run build:node`, then `SIGNUP_CODE=... node dist/server.mjs`.
 
 ## License
 

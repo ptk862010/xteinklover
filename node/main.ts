@@ -26,6 +26,8 @@ const MB = 1024 * 1024;
 const SELF_HOST_DEFAULTS: Record<string, string> = {
   CATALOG_TITLE: "Xteink Lover",
   MAX_USERS: "1",
+  // Server nằm trong mạng nhà: web chép thẳng sách vào thư mục theo tầng trên máy đọc
+  DEVICE_PUSH: "1",
   MAX_STORAGE_MB_PER_USER: "5000",
   MAX_STORAGE_MB_TOTAL: "20000",
   MAX_UPLOADS_PER_DAY: "300",
@@ -36,7 +38,7 @@ const SELF_HOST_DEFAULTS: Record<string, string> = {
 const WORKER_VARS = [
   "CATALOG_TITLE", "MAX_UPLOAD_MB", "MAX_USERS", "SIGNUP_CODE", "OPEN_SIGNUP", "MAX_SIGNUPS_PER_DAY", "MAX_BOOKS_PER_USER",
   "MAX_STORAGE_MB_PER_USER", "MAX_STORAGE_MB_TOTAL", "MAX_UPLOADS_PER_DAY", "MAX_UPLOADS_PER_DAY_TOTAL",
-  "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_TOKEN_URL", "GOOGLE_BOOKS_KEY", "SHOW_SELF_HOST", "FETCH_ALLOW_LOCAL",
+  "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_TOKEN_URL", "GOOGLE_BOOKS_KEY", "SHOW_SELF_HOST", "DEVICE_PUSH", "FETCH_ALLOW_LOCAL",
   "MAX_SYNC_DOCS", "MAX_SYNC_NEW_PER_DAY", "MAX_SYNC_WRITES_PER_DAY", "MAX_SYNC_WRITES_PER_DAY_TOTAL",
 ] as const satisfies readonly (keyof Env)[];
 
@@ -65,7 +67,7 @@ async function main(): Promise<void> {
   const db = new SqliteD1(join(dataDir, "xteinklover.db"));
   const kv = await DirKV.open(join(dataDir, "books"));
   const vars = workerVars();
-  const env = { ...vars, DB: db.asD1(), BOOKS: kv.asKV(), ASSETS: createAssets(publicDir) } as unknown as Env;
+  const env = { ...vars, DB: db.asD1(), BOOKS: kv.asKV(), ASSETS: createAssets(publicDir, { connectSrc: vars.DEVICE_PUSH === "1" ? "http:" : undefined }) } as unknown as Env;
   const pending = new Set<Promise<unknown>>();
   const publicUrl = process.env.PUBLIC_URL?.trim() || undefined;
   if (publicUrl) new URL(publicUrl); // sai định dạng thì dừng ngay lúc khởi động

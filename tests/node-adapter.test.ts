@@ -6,7 +6,7 @@ import { mkdtempSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DirKV, fileNameForKey } from "../node/kv";
-import { createAssets, parseHeadersFile, resolveAssetPath } from "../node/assets";
+import { createAssets, extendCsp, parseHeadersFile, resolveAssetPath } from "../node/assets";
 import { FixedLengthStream, declaredLength, installRuntime } from "../node/runtime";
 import { createNodeHandler, originOf } from "../node/server";
 import { SqliteD1 } from "../node/d1";
@@ -62,6 +62,17 @@ test("_headers: đọc luật, * khớp mọi đường dẫn, bỏ dòng chú t
   assert.ok(rules[0].pattern.test("/anything/here"));
   assert.deepEqual(rules[0].headers[1], ["Content-Security-Policy", "default-src 'self'; img-src data:"]);
   assert.ok(rules[1].pattern.test("/app.js") && !rules[1].pattern.test("/appXjs"));
+});
+
+test("CSP: bản tự chạy thêm http: vào connect-src để gọi máy đọc, chỉ thị khác giữ nguyên", async () => {
+  assert.equal(extendCsp("default-src 'self'; connect-src 'self' blob:; img-src data:", "connect-src", "http:"), "default-src 'self'; connect-src 'self' blob: http:; img-src data:");
+  assert.equal(extendCsp("default-src 'self'", "connect-src", "http:"), "default-src 'self'; connect-src http:");
+  const root = tmp("csp");
+  writeFileSync(join(root, "index.html"), "x");
+  writeFileSync(join(root, "_headers"), "/*\n  Content-Security-Policy: default-src 'self'; connect-src 'self'\n");
+  const csp = async (o = {}) => (await createAssets(root, o).fetch(new Request("http://x/"))).headers.get("content-security-policy");
+  assert.equal(await csp(), "default-src 'self'; connect-src 'self'");
+  assert.equal(await csp({ connectSrc: "http:" }), "default-src 'self'; connect-src 'self' http:");
 });
 
 test("trang tĩnh: chặn đi ngược thư mục, file ẩn, _headers", () => {

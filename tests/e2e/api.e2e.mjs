@@ -272,8 +272,12 @@ test("sắp xếp kệ: sửa thông tin, tầng, OPDS theo tầng, máy tải t
   assert.equal((await A.req("/api/shelves", { method: "POST", json: { name: "Trinh thám" } })).status, 409);
   assert.equal((await A.req("/api/shelves", { method: "POST", json: { name: "" } })).status, 400);
   const sB = await B.req("/api/shelves", { method: "POST", json: { name: "Của Bình" } });
-  assert.equal((await patch(A, bookA, { shelves: [s1.data.id, sB.data.id] })).status, 200);
-  assert.deepEqual((await mine()).shelves, [s1.data.id], "tầng người khác bị bỏ qua");
+  assert.equal((await patch(A, bookA, { shelves: [s1.data.id, sB.data.id] })).status, 400, "mỗi cuốn một tầng");
+  assert.equal((await patch(A, bookA, { shelves: [sB.data.id] })).status, 200);
+  assert.deepEqual((await mine()).shelves, [], "tầng người khác bị bỏ qua");
+  assert.equal((await patch(A, bookA, { shelves: [s1.data.id], fetched: true })).status, 200);
+  assert.deepEqual((await mine()).shelves, [s1.data.id]);
+  assert.ok((await mine()).fetched > 0, "web chép xuống máy thì đánh dấu đã về máy");
   // Đã có tầng: /opds là danh sách tầng (thư mục), sách nằm trong feed của tầng
   const root = await opds();
   assert.match(root.type, /kind=navigation/);
@@ -451,7 +455,8 @@ async function googleRound(c, { mode = "login", sub, email, proof: pf, tamper = 
 
 test("Google: trang báo đã bật; người mới chọn tên rồi thành tài khoản không mật khẩu", async () => {
   const cfg = await client().req("/api/config");
-  assert.deepEqual(cfg.data, { google: true, signup: true, needsCode: false, selfHost: false });
+  // devicePush: bản tự chạy (--node) bật sẵn, wrangler dev thì tắt
+  assert.deepEqual(cfg.data, { google: true, signup: true, needsCode: false, selfHost: false, devicePush: process.env.E2E_NODE === "1" });
   const g = client();
   const ip = { "CF-Connecting-IP": "203.0.113.50" };
   const r = await googleRound(g, { sub: "g-1001", email: "Phạm.Thử+x@gmail.com", headers: ip });

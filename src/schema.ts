@@ -190,4 +190,9 @@ export const MIGRATIONS: string[][] = [
   ],
   // v7 — ngày đọc xong (ms, 0 = chưa): KOSync báo ≥ 97% thì ghi lần đầu, hoặc người dùng tự đặt. Dùng cho ảnh chia sẻ.
   [`ALTER TABLE books ADD COLUMN finished_at INTEGER NOT NULL DEFAULT 0`],
+  // v8 — mỗi cuốn một tầng, như tủ sách thật (và như thư mục trên thẻ nhớ): giữ tầng xếp vào đầu tiên, khóa bằng index
+  [
+    `DELETE FROM book_shelves WHERE rowid NOT IN (SELECT MIN(rowid) FROM book_shelves GROUP BY book_id)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS book_shelves_one ON book_shelves(book_id)`,
+  ],
 ];
