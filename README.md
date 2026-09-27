@@ -100,7 +100,7 @@ npx wrangler secret put GOOGLE_BOOKS_KEY
 
 ### Sắp xếp kệ: tầng, Lên máy, tiến độ đọc
 
-- **Kệ sách** (màn hình mặc định, đứng cạnh thẻ **Chưa phân loại**): tủ trưng bày, mỗi tầng một hàng bìa trên tấm ván, tên tầng khắc trên biển đồng; tầng trên cùng là **⚡ Lên máy**. Sách chưa phân loại không lên kệ. Bấm bìa để sửa, tải hoặc xóa; bấm biển tên hoặc thẻ phía trên để xem riêng một tầng.
+- **Kệ sách** (màn hình mặc định, đứng cạnh thẻ **Chưa phân loại**): tủ trưng bày, mỗi tầng một hàng bìa trên tấm ván, tên tầng khắc trên biển đồng. Cuốn nào không lên máy thì bìa có nhãn nhỏ; thẻ **⚡ Lên máy** phía trên để lọc sách máy đang thấy. Sách chưa phân loại không lên kệ. Bấm bìa để sửa, tải hoặc xóa; bấm biển tên hoặc thẻ phía trên để xem riêng một tầng.
 - **Kéo thả** (máy tính): kéo một cuốn thả vào thẻ tầng hoặc tầng trên tủ là xếp vào (kéo từ tầng khác thì là chuyển tầng); thả vào **⚡ Lên máy** là bật Lên máy; thả vào **Chưa phân loại** là gỡ khỏi tầng vừa rời (kéo từ tầng Lên máy thì tắt Lên máy). Điện thoại dùng hộp Sửa.
 - **Lên máy**: nút trên bìa từng cuốn. Máy đọc (OPDS) chỉ thấy các cuốn đang bật. Sách mới mặc định bật, nên ai không dùng thì máy vẫn thấy cả kệ như cũ.
 - **Tầng**: tự đặt (Văn học, Trinh thám, "Đọc lại"…), một cuốn nằm được nhiều tầng. Xóa tầng không xóa sách.

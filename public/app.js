@@ -566,21 +566,28 @@
     const tip = [b.title, b.author, b.finished ? L(`đọc xong ${fmtDay(b.finished)}`, `finished ${fmtDay(b.finished)}`) : "", b.onDevice ? L("⚡ Lên máy", "⚡ On device") : "", b.onDevice && b.fetched ? L("đã về máy", "on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
     // div role=button (không dùng <button>): Firefox không cho kéo phần tử button
     return `<div class="spine cover${img ? " has-img" : ""}" role="button" tabindex="0" draggable="true" data-drag="${esc(b.id)}" data-from="${esc(from)}" data-open="${esc(b.id)}" title="${esc(tip)}" aria-label="${esc(tip)}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
-      ${b.finished ? `<i class="done" aria-hidden="true">✓</i>` : ""}${b.onDevice ? `<i class="bolt" aria-hidden="true">⚡</i>` : ""}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</div>`;
+      ${b.finished ? `<i class="done" aria-hidden="true">✓</i>` : ""}${b.onDevice ? "" : `<i class="off" aria-hidden="true">${esc(L("Không lên máy", "Not on device"))}</i>`}${p !== null ? `<i class="prog" aria-hidden="true"><i style="width:${p}%"></i></i>` : ""}</div>`;
   }
 
   /** Cả kệ: tầng Lên máy trên cùng, rồi các tầng tự tạo. Sách chưa phân loại không lên kệ, chỉ có dòng nhắc. */
   /** Tủ trưng bày: tầng ⚡ Lên máy trên cùng, rồi các tầng tự tạo; tên tầng khắc trên biển đồng ở mép ván. */
   function renderCase() {
-    const tier = (key, name, list, empty) => `<section class="tier" data-drop="${esc(key)}">
+    // Không có tầng "Lên máy": sách mới mặc định lên máy nên tầng đó chỉ là "tất cả sách" lặp lại.
+    // Lọc sách trên máy bằng thẻ ⚡ Lên máy; trên bìa chỉ đánh dấu cuốn KHÔNG lên máy.
+    const tier = (key, name, list, empty) => `<section class="tier"${key ? ` data-drop="${esc(key)}"` : ""}>
       <div class="tier-row">${list.length ? list.map((b) => spine(b, key)).join("") : `<p class="tier-empty">${esc(empty)}</p>`}</div>
-      <div class="plank"><button class="plate" type="button" data-view="${esc(key)}">${esc(name)} · ${list.length}</button></div></section>`;
-    const hint = shelves.length ? "" : `<p class="case-hint">${esc(L("Bấm “＋ Tầng” để đóng thêm tầng (Văn học, Trinh thám…), rồi mở từng cuốn để xếp lên.", "Tap “＋ Shelf” to add shelves (Fiction, Mystery…), then open a book to place it."))}</p>`;
+      <div class="plank"><button class="plate" type="button"${key ? ` data-view="${esc(key)}"` : ""}>${esc(name)} · ${list.length}</button></div></section>`;
+    if (!shelves.length) {
+      // Chưa đóng tầng nào: một tầng chung cho tất cả sách, kèm lời nhắc
+      $("#books").innerHTML = `<div class="case">${tier("", L("Kệ sách", "Bookcase"), books, "")}</div>`
+        + `<p class="case-hint">${esc(L("Bấm “＋ Tầng” để đóng thêm tầng (Văn học, Trinh thám…), rồi kéo sách vào hoặc mở từng cuốn để xếp lên.", "Tap “＋ Shelf” to add shelves (Fiction, Mystery…), then drag books onto them or open a book to place it."))}</p>`;
+      return;
+    }
     $("#books").innerHTML = `<div class="case">`
-      + tier("device", L("⚡ Lên máy", "⚡ On device"), books.filter((b) => b.onDevice), L("Chưa có cuốn nào. Mở một cuốn, tích Lên máy.", "Nothing yet. Open a book and tick On device."))
-      + shelves.map((s) => tier("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)), L("Tầng trống. Mở một cuốn, tích tầng này.", "Empty. Open a book and tick this shelf."))).join("")
-      + `</div>` + hint;
+      + shelves.map((s) => tier("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)), L("Tầng trống. Kéo sách vào đây, hoặc mở một cuốn và tích tầng này.", "Empty. Drag books here, or open a book and tick this shelf."))).join("")
+      + `</div>`;
   }
+
 
   function render() {
     renderBar();

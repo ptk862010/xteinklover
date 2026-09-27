@@ -116,9 +116,8 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
   transition: transform .2s ease, box-shadow .2s ease; transform-origin: bottom center; }
 .spine:hover, .spine:focus-visible { transform: translateY(-8px) rotate(-1.5deg); box-shadow: inset 4px 0 0 rgba(0,0,0,.18), 12px 18px 22px -6px rgba(0,0,0,.55); }
 .spine:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-/* Ở tầng Lên máy thì dấu ⚡ trên từng cuốn là thừa */
-.tier[data-drop="device"] .bolt { display: none; }
-.spine .bolt { position: absolute; z-index: 1; top: 6px; right: 6px; font-style: normal; font-size: .72rem; line-height: 1; padding: 3px 4px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+/* Lên máy là mặc định: chỉ đánh dấu cuốn KHÔNG lên máy */
+.spine .off { position: absolute; z-index: 1; top: 6px; right: 6px; max-width: calc(100% - 12px); font-style: normal; font: 600 .6rem/1.2 Inter, system-ui, sans-serif; padding: 3px 6px; border-radius: 999px; background: rgba(0,0,0,.72); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tier-empty { grid-column: 1 / -1; justify-self: center; align-self: center; margin: 0; padding-bottom: 12px; color: var(--ink2); font-size: .86rem; font-style: italic; }
 .case-hint { color: var(--ink2); font-size: .86rem; margin: 12px 2px 0; }
 .seg { display: inline-flex; flex: none; gap: 2px; padding: 3px; margin-right: 6px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
