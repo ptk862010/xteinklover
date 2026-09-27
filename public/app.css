@@ -4,7 +4,9 @@
   --shadow: 0 1px 2px rgba(40,30,20,.06), 0 8px 24px rgba(40,30,20,.08);
   --r: 16px;
 }
+:root { --wood: #b48456; --wood-dark: #8a6039; }
 @media (prefers-color-scheme: dark) {
+  :root { --wood: #6e4d31; --wood-dark: #4a321f; }
   :root { --bg: #141216; --bg2: #1d1a20; --ink: #efe9df; --ink2: #a79e92; --line: #2e2a33; --accent: #f28b5c; --accent-ink: #1a0d06; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); }
 }
 * { box-sizing: border-box; }
@@ -76,6 +78,26 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 .cover span { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cover.has-img::after, .cover.has-img span { display: none; }
+/* Kệ sách thật: mỗi tầng một hàng bìa đứng trên tấm ván */
+.tier { margin: 6px 0 30px; }
+.tier-name { margin: 0 0 8px; font-size: 1rem; }
+.tier-name button { border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; padding: 0; cursor: pointer; }
+.tier-name button:hover { color: var(--accent); }
+.tier-name span { color: var(--ink2); font-weight: 400; font-size: .85rem; }
+.tier-row { display: flex; align-items: flex-end; gap: 12px; min-height: 176px; padding: 12px 14px 0; overflow-x: auto; scrollbar-width: thin;
+  background: linear-gradient(to bottom, transparent 55%, color-mix(in srgb, var(--wood) 14%, transparent));
+  border-bottom: 12px solid var(--wood); border-radius: 6px 6px 3px 3px;
+  box-shadow: inset 0 -1px 0 var(--wood-dark), 0 10px 14px -8px rgba(0,0,0,.45); }
+.spine { flex: none; width: 108px; padding: 8px; border: 0; border-radius: 3px 6px 6px 3px; font-size: .8rem; text-align: left; cursor: pointer; overflow: hidden;
+  box-shadow: -3px 0 0 rgba(0,0,0,.18) inset, 2px 4px 8px rgba(0,0,0,.35); transition: transform .15s; }
+.spine:hover, .spine:focus-visible { transform: translateY(-6px); }
+.spine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.spine .bolt { position: absolute; z-index: 1; top: 5px; right: 5px; font-style: normal; font-size: .72rem; line-height: 1; padding: 3px 4px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+.tier-empty { margin: auto 0 14px; color: var(--ink2); font-size: .85rem; }
+.loose { display: block; width: 100%; margin: 0 0 18px; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 12px; background: var(--bg2); color: var(--ink); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
+.loose:hover { border-color: var(--accent); }
+.sheet-acts { display: flex; gap: 8px; margin: 0 0 14px; }
+.sheet-acts .btn { flex: 1; text-align: center; }
 /* Tầng + trạng thái trên thẻ sách */
 .shelf-bar { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; margin-bottom: 4px; scrollbar-width: thin; }
 .chip { flex: none; border: 1px solid var(--line); background: var(--bg2); color: var(--ink2); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .84rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
