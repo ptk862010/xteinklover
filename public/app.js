@@ -523,7 +523,7 @@
   function card(b) {
     const h = hue(b.title);
     const id = esc(b.id);
-    const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
+    const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy" draggable="false">` : "";
     const p = pct(b);
     const status = [b.finished ? L(`✓ đọc xong ${fmtDay(b.finished)}`, `✓ finished ${fmtDay(b.finished)}`) : "", b.onDevice && b.fetched ? L("✓ đã về máy", "✓ on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
     return `<article class="book" data-id="${id}" draggable="true" data-drag="${id}" data-from="${esc(dragFrom())}">
@@ -561,7 +561,7 @@
   /** Một cuốn đứng trên tầng: chỉ bìa (như kệ thật), bấm vào để mở Sửa. */
   function spine(b, from = "") {
     const h = hue(b.title);
-    const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
+    const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy" draggable="false">` : "";
     const p = pct(b);
     const tip = [b.title, b.author, b.finished ? L(`đọc xong ${fmtDay(b.finished)}`, `finished ${fmtDay(b.finished)}`) : "", b.onDevice ? L("⚡ Lên máy", "⚡ On device") : "", b.onDevice && b.fetched ? L("đã về máy", "on reader") : "", p !== null && !b.finished ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
     // div role=button (không dùng <button>): Firefox không cho kéo phần tử button
@@ -981,7 +981,7 @@
         ? L(`Tìm được ${j.items.length} bìa. Chưa đúng thì thử bỏ tác giả, hoặc tìm bằng tên gốc.`, `Found ${j.items.length} covers. Not it? Try without the author, or the original title.`)
         : L("Không tìm thấy bìa nào. Thử bỏ tác giả, hoặc tìm bằng tên gốc (tiếng Anh).", "No covers found. Try without the author, or the original title.");
       $("#coverResults").innerHTML = j.items.map((c, i) => `<button class="cand" type="button" data-cand="${i}" title="${esc(c.title)}">
-        <img src="${esc(c.thumb)}" alt="" loading="lazy">
+        <img src="${esc(c.thumb)}" alt="" loading="lazy" draggable="false">
         <span class="t">${esc(c.title)}</span>
         <span class="s">${esc([c.publisher, c.year, (c.lang || "").toUpperCase()].filter(Boolean).join(" · "))}</span>
       </button>`).join("");
@@ -1140,12 +1140,18 @@
 
   // Kéo thả: chỉ can thiệp khi kéo FILE (kéo chữ vào ô dán vẫn chạy bình thường)
   const drop = $("#drop");
-  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+  // Kéo bắt đầu NGAY TRONG TRANG (ảnh bìa, link, chữ, sách) không bao giờ là gửi file: trình duyệt coi kéo ảnh là kéo
+  // file "cover.jpg". dragstart chỉ bắn cho thứ kéo từ trong trang, file kéo từ ngoài máy vào thì không.
+  let dragFromPage = false;
+  document.addEventListener("dragstart", () => { dragFromPage = true; }, true);
+  document.addEventListener("dragend", () => { dragFromPage = false; }, true);
+  const hasFiles = (e) => !dragFromPage && [...(e.dataTransfer?.types || [])].includes("Files");
   $("#file").addEventListener("change", (e) => { sendFiles([...e.target.files]); e.target.value = ""; });
   drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#file").click(); } });
   ["dragenter", "dragover"].forEach((ev) => document.addEventListener(ev, (e) => { if (!hasFiles(e)) return; e.preventDefault(); if (me) drop.classList.add("over"); }));
   document.addEventListener("dragleave", (e) => { if (hasFiles(e) && e.relatedTarget === null) drop.classList.remove("over"); });
   document.addEventListener("drop", (e) => {
+    if (dragFromPage) { dragFromPage = false; if (!e.defaultPrevented) e.preventDefault(); return; }
     if (!hasFiles(e)) return;
     e.preventDefault();
     drop.classList.remove("over");
