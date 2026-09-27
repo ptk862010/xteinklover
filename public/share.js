@@ -67,7 +67,13 @@
       const fs = Math.max(14, Math.round(w / 8));
       ctx.font = `700 ${fs}px Fraunces, Georgia, serif`;
       const lines = wrap(ctx, b.title, w - fs, 5);
-      lines.forEach((l, i) => ctx.fillText(l, x + fs / 2, y + h - fs * 0.8 - (lines.length - 1 - i) * fs * 1.15));
+      const base = y + h - fs * (b.author ? 2.1 : 0.8);
+      lines.forEach((l, i) => ctx.fillText(l, x + fs / 2, base - (lines.length - 1 - i) * fs * 1.15));
+      if (b.author) {
+        ctx.font = `500 ${Math.round(fs * 0.62)}px Inter, system-ui, sans-serif`;
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillText(wrap(ctx, b.author, w - fs, 1)[0], x + fs / 2, y + h - fs * 0.8);
+      }
     }
     // Gáy sách: vệt tối bên trái
     ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(x, y, Math.max(3, w * 0.035), h);
@@ -123,8 +129,11 @@
       if (rows * rowH(w) > bottom - top) w = ((bottom - top) / rows - plankH - 30) / 1.5;
       const startY = top + Math.max(0, (bottom - top - rows * rowH(w)) / 2);
       const imgs = await Promise.all(shown.map((b) => opts.loadCover(b).catch(() => null)));
+      // Chia đều giữa các tầng (10 cuốn → 4 + 3 + 3, không phải 4 + 4 + 2)
+      const per = Array.from({ length: rows }, (_, r) => Math.floor(n / rows) + (r < n % rows ? 1 : 0));
+      const startAt = (r) => per.slice(0, r).reduce((a, x) => a + x, 0);
       for (let r = 0; r < rows; r++) {
-        const items = shown.slice(r * cols, r * cols + cols);
+        const items = shown.slice(startAt(r), startAt(r) + per[r]);
         const y0 = startY + r * rowH(w);
         const rowW = items.length * w + (items.length - 1) * gap;
         const x0 = (W - rowW) / 2;
@@ -132,7 +141,7 @@
         const sp = ctx.createRadialGradient(W / 2, y0, 10, W / 2, y0, W * 0.55);
         sp.addColorStop(0, C.spot); sp.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = sp; ctx.fillRect(pad, y0 - 10, W - pad * 2, w * 1.5 + 20);
-        items.forEach((b, i) => drawCover(ctx, b, imgs[r * cols + i], x0 + i * (w + gap), y0 + 10, w, w * 1.5));
+        items.forEach((b, i) => drawCover(ctx, b, imgs[startAt(r) + i], x0 + i * (w + gap), y0 + 10, w, w * 1.5));
         // Ván: mặt trên + mép trước, ngày đọc xong khắc dưới từng cuốn
         const py = y0 + 10 + w * 1.5;
         ctx.fillStyle = C.plankTop; ctx.fillRect(pad, py, W - pad * 2, 12);
