@@ -76,7 +76,32 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 .cover span { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cover.has-img::after, .cover.has-img span { display: none; }
-.cover-book { margin: 0 0 12px; font-weight: 600; }
+/* Tầng + trạng thái trên thẻ sách */
+.shelf-bar { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; margin-bottom: 4px; scrollbar-width: thin; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--bg2); color: var(--ink2); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .84rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.chip span { opacity: .7; font-variant-numeric: tabular-nums; }
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+.chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip.add { border-style: dashed; }
+.shelf-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; font-size: .85rem; }
+.shelf-tools .input { width: auto; flex: 1 1 160px; max-width: 260px; padding: 6px 10px; }
+.shelf-tools .btn { padding: 5px 12px; font-size: .84rem; }
+.group { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 10px; font-size: 1rem; }
+.group span { color: var(--ink2); font-weight: 400; font-size: .85rem; }
+.empty-view { color: var(--ink2); padding: 18px 0; margin: 0; }
+.dev { position: absolute; z-index: 1; top: 8px; right: 8px; border: 0; border-radius: 999px; padding: 3px 9px; font: 600 .72rem/1.4 Inter, system-ui, sans-serif; cursor: pointer; background: rgba(0,0,0,.55); color: #fff; text-shadow: none; }
+.dev.on { background: var(--accent); color: var(--accent-ink); }
+.dev:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.prog { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0,0,0,.35); }
+.prog i { display: block; height: 100%; background: var(--accent); }
+.meta .st { display: block; margin-top: 2px; color: var(--ok); }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: .9rem; line-height: 1.45; cursor: pointer; }
+.check input { margin-top: 3px; accent-color: var(--accent); flex: none; }
+.shelf-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.shelf-checks label { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: .85rem; font-weight: 500; cursor: pointer; }
+.shelf-checks label:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.shelf-checks input { accent-color: var(--accent); margin: 0; }
+.new-shelf { display: flex; gap: 6px; margin-top: 6px; }
 .cover-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
 @media (max-width: 480px) { .cover-form { grid-template-columns: 1fr; } }
 .cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; margin: 10px 0 14px; }

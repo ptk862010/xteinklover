@@ -158,7 +158,9 @@
         <input id="search" class="input search" type="search" placeholder="Tìm trong kệ…" data-en-placeholder="Search your shelf…">
       </div>
       <p class="usage muted small" id="usage"></p>
-      <div id="books" class="grid"></div>
+      <div id="shelfBar" class="shelf-bar" role="toolbar" aria-label="Tầng" data-en-aria-label="Shelves"></div>
+      <div id="shelfTools" class="shelf-tools" hidden></div>
+      <div id="books"></div>
       <div id="empty" class="empty" hidden>
         <div class="empty-art">📚</div>
         <p data-en-html="Your shelf is empty. Drop your first file above, then tap <b>⚡ Connect</b> so your e-reader can see this shelf.">Kệ đang trống. Thả file đầu tiên vào ô phía trên, rồi bấm <b>⚡ Nối máy</b> để máy đọc sách thấy kệ này.</p>
@@ -236,10 +238,23 @@
   </section>
 </aside>
 
-<!-- Chọn bìa -->
-<aside class="sheet" id="coverSheet" hidden role="dialog" aria-modal="true" aria-labelledby="coverTitle">
-  <div class="sheet-head"><h3 id="coverTitle" data-en="Book cover">Bìa sách</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
-  <p class="cover-book" id="coverBook"></p>
+<!-- Sửa sách: thông tin, tầng, Lên máy, bìa -->
+<aside class="sheet" id="bookSheet" hidden role="dialog" aria-modal="true" aria-labelledby="bookSheetTitle">
+  <div class="sheet-head"><h3 id="bookSheetTitle" data-en="Edit book">Sửa sách</h3><button class="btn ghost" data-close type="button" aria-label="Đóng" data-en-aria-label="Close">✕</button></div>
+  <form id="bookForm" class="auth-form">
+    <label class="field"><span data-en="Title">Tên sách</span><input id="bfTitle" class="input" maxlength="200" required></label>
+    <label class="field"><span data-en="Author">Tác giả</span><input id="bfAuthor" class="input" maxlength="200"></label>
+    <label class="field"><span>ISBN</span><input id="bfIsbn" class="input" inputmode="numeric" maxlength="20" autocomplete="off"></label>
+    <label class="check"><input type="checkbox" id="bfDevice"><span data-en-html="<b>On device</b>: your e-reader sees this book on its OPDS shelf"><b>Lên máy</b>: máy đọc thấy cuốn này trong kệ OPDS</span></label>
+    <label class="check"><input type="checkbox" id="bfWrite"><span id="bfWriteNote"></span></label>
+    <div class="field"><span data-en="Shelves">Tầng</span>
+      <div id="bfShelves" class="shelf-checks"></div>
+      <div class="new-shelf"><input id="bfNewShelf" class="input" maxlength="40" placeholder="Tầng mới, vd Văn học" data-en-placeholder="New shelf, e.g. Fiction" aria-label="Tầng mới" data-en-aria-label="New shelf"><button class="btn" id="bfAddShelf" type="button" data-en="Add">Thêm</button></div>
+    </div>
+    <p class="muted small" id="bfStatus" aria-live="polite"></p>
+    <button class="btn primary wide" id="bfSave" type="submit" data-en="Save">Lưu</button>
+  </form>
+  <h4 data-en="Cover">Bìa</h4>
   <button class="btn wide" id="coverFromFile" type="button" data-en="Use the cover inside the file">Lấy bìa có sẵn trong file</button>
   <div class="or" data-en="or search online">hoặc tìm trên mạng</div>
   <form id="coverForm" class="cover-form">

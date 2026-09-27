@@ -159,4 +159,33 @@ export const MIGRATIONS: string[][] = [
     `CREATE TRIGGER IF NOT EXISTS books_cover_del AFTER DELETE ON books
       BEGIN DELETE FROM covers WHERE book_id = OLD.id; END`,
   ],
+  // v6 — sắp xếp kệ: tầng (nhãn, một cuốn nhiều tầng), dấu "Lên máy" (feed OPDS chỉ có các cuốn này; mặc định bật
+  // nên ai không dùng thì máy vẫn thấy cả kệ như cũ), lúc máy tải về, mã KOReader của file (nối tiến độ KOSync), ISBN.
+  // Thay file (sửa tên trong EPUB) đổi size → trigger chỉnh thống kê dung lượng chung.
+  [
+    `ALTER TABLE books ADD COLUMN on_device INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE books ADD COLUMN fetched_at INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE books ADD COLUMN ko_hash TEXT`,
+    `ALTER TABLE books ADD COLUMN isbn TEXT NOT NULL DEFAULT ''`,
+    `CREATE TABLE IF NOT EXISTS shelves (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS shelves_user_name ON shelves(user_id, name)`,
+    `CREATE TABLE IF NOT EXISTS book_shelves (
+      book_id TEXT NOT NULL,
+      shelf_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      PRIMARY KEY (book_id, shelf_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS book_shelves_shelf ON book_shelves(shelf_id)`,
+    `CREATE TRIGGER IF NOT EXISTS books_shelves_del AFTER DELETE ON books
+      BEGIN DELETE FROM book_shelves WHERE book_id = OLD.id; END`,
+    `CREATE TRIGGER IF NOT EXISTS shelves_del AFTER DELETE ON shelves
+      BEGIN DELETE FROM book_shelves WHERE shelf_id = OLD.id; END`,
+    `CREATE TRIGGER IF NOT EXISTS books_bytes_upd AFTER UPDATE OF size ON books
+      BEGIN UPDATE stats SET value = MAX(value - OLD.size + NEW.size, 0) WHERE key = 'bytes'; END`,
+  ],
 ];

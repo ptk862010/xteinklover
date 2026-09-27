@@ -22,6 +22,16 @@ export interface BookRow {
   blob_key: string;
   /** Phiên bản ảnh bìa trên kệ web (0 = chưa có), tăng mỗi lần đổi bìa */
   cover?: number;
+  /** 1 = có trong feed OPDS của máy đọc ("Lên máy"). Mặc định 1. */
+  on_device?: number;
+  /** Lúc máy đọc tải file về gần nhất (ms), 0 = chưa (hoặc file đã thay, máy đang giữ bản cũ) */
+  fetched_at?: number;
+  /** Partial MD5 kiểu KOReader của file — khớp với `document` của KOSync. null = chưa tính */
+  ko_hash?: string | null;
+  isbn?: string;
+  /** Chỉ có khi liệt kê cho web: tiến độ đọc (0–1) từ KOSync, danh sách id tầng "a,b" */
+  progress?: number | null;
+  shelf_ids?: string | null;
 }
 
 /** Sách trả cho trình duyệt / OPDS: không lộ user_id, blob_key. */
@@ -34,10 +44,29 @@ export interface BookMeta {
   added: string;
   /** Phiên bản ảnh bìa (0 = chưa có) — dùng làm ?v= cho địa chỉ ảnh */
   cover?: number;
+  onDevice?: boolean;
+  /** ms, 0 = máy chưa tải bản hiện tại */
+  fetched?: number;
+  /** 0–1 theo KOSync, null = chưa đọc / chưa khớp được */
+  progress?: number | null;
+  shelves?: string[];
+  isbn?: string;
 }
 
 export function toMeta(b: BookRow): BookMeta {
-  return { id: b.id, title: b.title, author: b.author, size: b.size, added: b.added, cover: b.cover ?? 0 };
+  return {
+    id: b.id,
+    title: b.title,
+    author: b.author,
+    size: b.size,
+    added: b.added,
+    cover: b.cover ?? 0,
+    onDevice: (b.on_device ?? 1) === 1,
+    fetched: b.fetched_at ?? 0,
+    progress: typeof b.progress === "number" ? b.progress : null,
+    shelves: b.shelf_ids ? b.shelf_ids.split(",") : [],
+    isbn: b.isbn ?? "",
+  };
 }
 
 // ── schema ─────────────────────────────────────────────
@@ -207,6 +236,7 @@ export async function cronCleanup(db: D1Database, nowMs: number): Promise<void> 
     del("sync_progress"),
     del("sync_counts"),
     del("sync_keys"),
+    del("shelves"),
     del("users", "id"),
     db.prepare("DELETE FROM oauth_pending WHERE expires_at <= ?").bind(nowMs),
   ]);
@@ -217,9 +247,161 @@ export async function cronCleanup(db: D1Database, nowMs: number): Promise<void> 
 /** Trần số sách liệt kê một lần (web). MAX_BOOKS_PER_USER bị kẹp theo số này. */
 export const LIST_LIMIT = 500;
 
+/** Kệ trên web: kèm tiến độ đọc (KOSync, khớp theo mã file) và các tầng của từng cuốn. */
 export async function listBooks(db: D1Database, userId: string, limit = LIST_LIMIT, offset = 0): Promise<BookRow[]> {
-  const r = await db.prepare("SELECT * FROM books WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?").bind(userId, limit, offset).all<BookRow>();
+  const r = await db
+    .prepare(
+      `SELECT b.*, p.percentage AS progress,
+         (SELECT group_concat(s.shelf_id) FROM book_shelves s WHERE s.book_id = b.id AND s.user_id = b.user_id) AS shelf_ids
+       FROM books b LEFT JOIN sync_progress p ON p.user_id = b.user_id AND p.document = b.ko_hash COLLATE NOCASE
+       WHERE b.user_id = ? ORDER BY b.id DESC LIMIT ? OFFSET ?`,
+    )
+    .bind(userId, limit, offset)
+    .all<BookRow>();
   return r.results;
+}
+
+/** Feed OPDS: chỉ sách đang bật "Lên máy". */
+export async function listDeviceBooks(db: D1Database, userId: string, limit: number, offset: number): Promise<BookRow[]> {
+  const r = await db
+    .prepare("SELECT * FROM books WHERE user_id = ? AND on_device = 1 ORDER BY id DESC LIMIT ? OFFSET ?")
+    .bind(userId, limit, offset)
+    .all<BookRow>();
+  return r.results;
+}
+
+export interface BookPatch {
+  title?: string;
+  author?: string;
+  isbn?: string;
+  on_device?: number;
+}
+
+/** Sửa thông tin trên kệ (không đụng file). false = không có sách này hoặc không phải của người này. */
+export async function updateBookMeta(db: D1Database, userId: string, id: string, p: BookPatch): Promise<boolean> {
+  const cols = (["title", "author", "isbn", "on_device"] as const).filter((k) => p[k] !== undefined);
+  if (!cols.length) return (await getBook(db, userId, id)) !== null;
+  const r = await db
+    .prepare(`UPDATE books SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ? AND user_id = ?`)
+    .bind(...cols.map((c) => p[c]), id, userId)
+    .run();
+  return r.meta.changes > 0;
+}
+
+/** Đặt lại toàn bộ tầng của một cuốn (bỏ qua id tầng lạ / của người khác). false = không có sách. */
+export async function setBookShelves(db: D1Database, userId: string, bookId: string, shelfIds: string[]): Promise<boolean> {
+  if (!(await getBook(db, userId, bookId))) return false;
+  const ids = [...new Set(shelfIds)].slice(0, SHELVES_MAX_HARD);
+  const stmts = [db.prepare("DELETE FROM book_shelves WHERE book_id = ? AND user_id = ?").bind(bookId, userId)];
+  if (ids.length) {
+    stmts.push(
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO book_shelves (book_id, shelf_id, user_id)
+           SELECT ?, id, user_id FROM shelves WHERE user_id = ? AND id IN (${ids.map(() => "?").join(",")})
+             AND EXISTS (SELECT 1 FROM books WHERE id = ?1 AND user_id = ?2)`,
+        )
+        .bind(bookId, userId, ...ids),
+    );
+  }
+  await db.batch(stmts);
+  return true;
+}
+
+/** Trần cứng số tầng mỗi người (MAX_SHELVES bị kẹp theo số này). */
+export const SHELVES_MAX_HARD = 100;
+
+export interface ShelfRow {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: number;
+}
+
+export async function listShelves(db: D1Database, userId: string): Promise<(ShelfRow & { count: number })[]> {
+  const r = await db
+    .prepare(
+      `SELECT s.*, (SELECT COUNT(*) FROM book_shelves bs WHERE bs.shelf_id = s.id) AS count
+       FROM shelves s WHERE s.user_id = ? ORDER BY s.name COLLATE NOCASE, s.id`,
+    )
+    .bind(userId)
+    .all<ShelfRow & { count: number }>();
+  return r.results;
+}
+
+/** Tạo tầng: kiểm số lượng và trùng tên trong cùng câu lệnh. */
+export async function createShelf(db: D1Database, s: ShelfRow, max: number): Promise<"ok" | "exists" | "full"> {
+  const r = await db
+    .prepare(
+      `INSERT OR IGNORE INTO shelves (id, user_id, name, created_at)
+       SELECT ?1, ?2, ?3, ?4 WHERE (SELECT COUNT(*) FROM shelves WHERE user_id = ?2) < ?5`,
+    )
+    .bind(s.id, s.user_id, s.name, s.created_at, max)
+    .run();
+  if (r.meta.changes > 0) return "ok";
+  const dup = await db.prepare("SELECT 1 AS x FROM shelves WHERE user_id = ? AND name = ?").bind(s.user_id, s.name).first();
+  return dup ? "exists" : "full";
+}
+
+export async function renameShelf(db: D1Database, userId: string, id: string, name: string): Promise<"ok" | "exists" | "missing"> {
+  const own = await db.prepare("SELECT name FROM shelves WHERE id = ? AND user_id = ?").bind(id, userId).first<{ name: string }>();
+  if (!own) return "missing";
+  if (own.name === name) return "ok";
+  const r = await db.prepare("UPDATE OR IGNORE shelves SET name = ? WHERE id = ? AND user_id = ?").bind(name, id, userId).run();
+  return r.meta.changes > 0 ? "ok" : "exists";
+}
+
+/** Xóa tầng (trigger gỡ tầng khỏi các cuốn; sách vẫn còn). */
+export async function deleteShelf(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const r = await db.prepare("DELETE FROM shelves WHERE id = ? AND user_id = ?").bind(id, userId).run();
+  return r.meta.changes > 0;
+}
+
+/** Máy đọc (Basic auth) vừa tải file này. */
+export async function markFetched(db: D1Database, userId: string, id: string, nowMs: number): Promise<void> {
+  await db.prepare("UPDATE books SET fetched_at = ? WHERE id = ? AND user_id = ?").bind(nowMs, id, userId).run();
+}
+
+export async function setKoHash(db: D1Database, id: string, hash: string): Promise<void> {
+  await db.prepare("UPDATE books SET ko_hash = ? WHERE id = ?").bind(hash, id).run();
+}
+
+/** Sách cũ (gửi trước khi có mã KOReader): cron tính dần. */
+export async function booksMissingHash(db: D1Database, limit: number): Promise<{ id: string; blob_key: string }[]> {
+  const r = await db.prepare("SELECT id, blob_key FROM books WHERE ko_hash IS NULL ORDER BY id LIMIT ?").bind(limit).all<{ id: string; blob_key: string }>();
+  return r.results;
+}
+
+/**
+ * Thay file của một cuốn (đã sửa tên trong EPUB): kiểm dung lượng kệ và kho chung theo phần chênh lệch, trong
+ * cùng một câu lệnh. Trigger books_bytes_upd chỉnh thống kê chung. Máy đang giữ bản cũ nên fetched_at về 0
+ * (trừ khi hoàn tác sau khi ghi KV lỗi: truyền lại giá trị cũ).
+ */
+export async function replaceBookFile(
+  db: D1Database,
+  userId: string,
+  id: string,
+  newSize: number,
+  koHash: string | null,
+  maxBytes: number,
+  maxTotal: number,
+  fetchedAt = 0,
+): Promise<"ok" | "missing" | "shelf_full" | "store_full"> {
+  const old = await getBook(db, userId, id);
+  if (!old) return "missing";
+  const r = await db
+    .prepare(
+      `UPDATE books SET size = ?1, ko_hash = ?2, fetched_at = ?8
+       WHERE id = ?3 AND user_id = ?4 AND size = ?5
+         AND (SELECT COALESCE(SUM(size), 0) FROM books WHERE user_id = ?4) - ?5 + ?1 <= ?6
+         AND (?1 <= ?5 OR (SELECT value FROM stats WHERE key = 'bytes') - ?5 + ?1 <= ?7)`,
+    )
+    .bind(newSize, koHash, id, userId, old.size, maxBytes, maxTotal, fetchedAt)
+    .run();
+  if (r.meta.changes > 0) return "ok";
+  const total = await db.prepare("SELECT value FROM stats WHERE key = 'bytes'").first<{ value: number }>();
+  if (!(await getBook(db, userId, id))) return "missing";
+  return (total?.value ?? 0) - old.size + newSize > maxTotal ? "store_full" : "shelf_full";
 }
 
 export function getBook(db: D1Database, userId: string, id: string): Promise<BookRow | null> {
@@ -236,14 +418,14 @@ export type InsertResult = "ok" | "shelf_full" | "store_full";
 export async function insertBookWithinQuota(db: D1Database, b: BookRow, maxBooks: number, maxBytes: number, maxTotal: number): Promise<InsertResult> {
   const r = await db
     .prepare(
-      `INSERT INTO books (id, user_id, title, author, size, added, blob_key)
-       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+      `INSERT INTO books (id, user_id, title, author, size, added, blob_key, ko_hash)
+       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?11
        WHERE EXISTS (SELECT 1 FROM users WHERE id = ?2)
          AND (SELECT COUNT(*) FROM books WHERE user_id = ?2) < ?8
          AND (SELECT COALESCE(SUM(size), 0) FROM books WHERE user_id = ?2) + ?5 <= ?9
          AND (SELECT value FROM stats WHERE key = 'bytes') + ?5 <= ?10`,
     )
-    .bind(b.id, b.user_id, b.title, b.author, b.size, b.added, b.blob_key, maxBooks, maxBytes, maxTotal)
+    .bind(b.id, b.user_id, b.title, b.author, b.size, b.added, b.blob_key, maxBooks, maxBytes, maxTotal, b.ko_hash ?? null)
     .run();
   if (r.meta.changes > 0) return "ok";
   const total = await db.prepare("SELECT value FROM stats WHERE key = 'bytes'").first<{ value: number }>();
@@ -419,6 +601,7 @@ export async function deleteUserCascade(db: D1Database, userId: string, nowMs: n
     db.prepare("DELETE FROM sync_progress WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM sync_counts WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM sync_keys WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM shelves WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM users WHERE id = ?").bind(userId),
   ]);
 }

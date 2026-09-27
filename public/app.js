@@ -4,6 +4,11 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   let books = [];
+  /** Tầng của người dùng; cách xem kệ: all | device | unsorted | authors | s:<id tầng> */
+  let shelves = [];
+  let view = "all";
+  try { view = localStorage.getItem("xl_view") || "all"; } catch { /* bỏ qua */ }
+  let shelfTool = null; // null | "new" | "rename"
   let me = null;
   /** Cấu hình công khai của trang (/api/config): có bật Google không, đăng ký có cần mã mời không */
   let cfg = { google: false, signup: true, needsCode: false, selfHost: false };
@@ -93,6 +98,7 @@
   function resetUserState() {
     epoch++;
     books = [];
+    shelves = [];
     render();
     $("#opdsKey").textContent = L("khóa OPDS", "OPDS key");
     $("#opdsKey").classList.remove("fresh");
@@ -497,28 +503,85 @@
   });
 
   // ── Kệ sách ──
+  // Cách xem: all | device (Lên máy) | unsorted (Chưa phân loại) | authors (Theo tác giả) | s:<id tầng>
+  function setView(v) {
+    view = v; shelfTool = null;
+    try { localStorage.setItem("xl_view", v); } catch { /* bỏ qua */ }
+    render();
+  }
+  const shelfOf = (b) => b.shelves || [];
+  /** Còn thiếu tầng, tác giả hoặc bìa → nằm ở "Chưa phân loại" */
+  const isUnsorted = (b) => !shelfOf(b).length || !b.author || !b.cover;
+  const pct = (b) => (typeof b.progress === "number" ? Math.round(b.progress * 100) : null);
+
+  function card(b) {
+    const h = hue(b.title);
+    const id = esc(b.id);
+    const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
+    const p = pct(b);
+    const status = [b.onDevice && b.fetched ? L("✓ đã về máy", "✓ on reader") : "", p !== null ? L(`đọc ${p}%`, `${p}% read`) : ""].filter(Boolean).join(" · ");
+    return `<article class="book" data-id="${id}">
+      <div class="cover${img ? " has-img" : ""}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span>
+        <button class="dev${b.onDevice ? " on" : ""}" type="button" data-dev="${id}" aria-pressed="${b.onDevice ? "true" : "false"}" title="${esc(L("Bật: máy đọc thấy cuốn này trong kệ OPDS", "On: your e-reader sees this book on its OPDS shelf"))}">${b.onDevice ? "⚡ " + L("Lên máy", "On device") : "＋ " + L("Lên máy", "Device")}</button>
+        ${p !== null ? `<div class="prog" aria-hidden="true"><i style="width:${p}%"></i></div>` : ""}</div>
+      <div class="meta"><b title="${esc(b.title)}">${esc(b.title)}</b>${esc(b.author || "—")} · ${fmtSize(b.size)} · ${fmtDate(b.added)}${status ? `<span class="st">${esc(status)}</span>` : ""}</div>
+      <div class="acts"><a class="btn" href="/books/${encodeURIComponent(b.id)}.epub">${L("Tải", "Download")}</a><button class="btn" data-edit="${id}" type="button">${L("Sửa", "Edit")}</button><button class="btn danger" data-del="${id}" type="button">${L("Xóa", "Delete")}</button></div>
+    </article>`;
+  }
+
+  function renderBar() {
+    if (view.startsWith("s:") && !shelves.some((s) => "s:" + s.id === view)) view = "all";
+    const chip = (v, label, n) => `<button class="chip${view === v ? " on" : ""}" type="button" data-view="${esc(v)}" aria-pressed="${view === v}">${esc(label)}${n === undefined ? "" : ` <span>${n}</span>`}</button>`;
+    $("#shelfBar").innerHTML = [
+      chip("all", L("Tất cả", "All"), books.length),
+      chip("device", L("⚡ Lên máy", "⚡ On device"), books.filter((b) => b.onDevice).length),
+      chip("unsorted", L("Chưa phân loại", "Unsorted"), books.filter(isUnsorted).length),
+      ...shelves.map((s) => chip("s:" + s.id, s.name, books.filter((b) => shelfOf(b).includes(s.id)).length)),
+      chip("authors", L("Theo tác giả", "By author")),
+      `<button class="chip add" type="button" data-newshelf>＋ ${L("Tầng", "Shelf")}</button>`,
+    ].join("");
+    const tools = $("#shelfTools");
+    const cur = view.startsWith("s:") ? shelves.find((s) => "s:" + s.id === view) : null;
+    if (shelfTool === "new" || (shelfTool === "rename" && cur)) {
+      tools.innerHTML = `<input class="input" id="shelfName" maxlength="40" value="${esc(shelfTool === "rename" ? cur.name : "")}" placeholder="${esc(L("Tên tầng, vd Văn học", "Shelf name, e.g. Fiction"))}" aria-label="${esc(L("Tên tầng", "Shelf name"))}">
+        <button class="btn primary" type="button" data-shelfsave>${shelfTool === "new" ? L("Tạo tầng", "Create") : L("Lưu tên", "Save")}</button><button class="btn ghost" type="button" data-shelfcancel>${L("Thôi", "Cancel")}</button>`;
+    } else if (cur) {
+      tools.innerHTML = `<span class="muted">${esc(L("Tầng", "Shelf"))} <b>${esc(cur.name)}</b>:</span><button class="btn" type="button" data-shelfrename>${L("Đổi tên", "Rename")}</button><button class="btn danger" type="button" data-shelfdel>${L("Xóa tầng", "Delete shelf")}</button><span class="muted small">${esc(L("Xóa tầng không xóa sách.", "Deleting a shelf keeps its books."))}</span>`;
+    } else tools.innerHTML = "";
+    tools.hidden = !tools.innerHTML;
+    if (shelfTool) setTimeout(() => $("#shelfName")?.focus(), 0);
+  }
+
   function render() {
+    renderBar();
     const q = $("#search").value.trim().toLowerCase();
-    const list = books.filter((b) => !q || (b.title + " " + b.author).toLowerCase().includes(q));
+    const inView = (b) => view === "device" ? b.onDevice : view === "unsorted" ? isUnsorted(b) : view.startsWith("s:") ? shelfOf(b).includes(view.slice(2)) : true;
+    const list = books.filter((b) => (!q || (b.title + " " + b.author).toLowerCase().includes(q)) && inView(b));
     $("#count").textContent = books.length ? L(`${books.length} cuốn`, `${books.length} ${books.length === 1 ? "book" : "books"}`) : "";
     $("#empty").hidden = books.length > 0;
-    $("#books").innerHTML = list.map((b) => {
-      const h = hue(b.title);
-      const img = b.cover ? `<img src="/api/books/${encodeURIComponent(b.id)}/cover?v=${Number(b.cover)}" alt="" loading="lazy">` : "";
-      return `<article class="book" data-id="${esc(b.id)}">
-        <div class="cover${img ? " has-img" : ""}" style="background: linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 40) % 360} 55% 28%))">${img}<span>${esc(b.title)}</span></div>
-        <div class="meta"><b title="${esc(b.title)}">${esc(b.title)}</b>${esc(b.author || "—")} · ${fmtSize(b.size)} · ${fmtDate(b.added)}</div>
-        <div class="acts"><a class="btn" href="/books/${encodeURIComponent(b.id)}.epub">${L("Tải", "Download")}</a><button class="btn" data-cover="${esc(b.id)}" type="button">${L("Bìa", "Cover")}</button><button class="btn danger" data-del="${esc(b.id)}" type="button">${L("Xóa", "Delete")}</button></div>
-      </article>`;
-    }).join("");
+    $("#shelfBar").hidden = books.length === 0;
+    if (!books.length) { $("#books").innerHTML = ""; return; }
+    if (!list.length) {
+      const msg = view === "unsorted" && !q ? L("Kệ gọn gàng: cuốn nào cũng đã có tầng, tác giả và bìa.", "All tidy: every book has a shelf, an author and a cover.")
+        : view === "device" && !q ? L("Chưa có cuốn nào Lên máy. Bấm “＋ Lên máy” trên bìa để máy đọc thấy cuốn đó.", "Nothing on your device yet. Tap “＋ Device” on a cover so your e-reader sees it.")
+        : L("Không có cuốn nào ở đây.", "No books here.");
+      $("#books").innerHTML = `<p class="empty-view">${esc(msg)}</p>`;
+      return;
+    }
+    if (view !== "authors") { $("#books").innerHTML = `<div class="grid">${list.map(card).join("")}</div>`; return; }
+    const groups = new Map();
+    for (const b of list) { const k = b.author || ""; groups.set(k, [...(groups.get(k) || []), b]); }
+    const sorted = [...groups].sort((a, b) => (!a[0]) - (!b[0]) || b[1].length - a[1].length || a[0].localeCompare(b[0], LOCALE));
+    $("#books").innerHTML = sorted.map(([a, bs]) => `<h3 class="group">${esc(a || L("Chưa rõ tác giả", "Unknown author"))} <span>${bs.length}</span></h3><div class="grid">${bs.map(card).join("")}</div>`).join("");
   }
 
   async function refresh() {
     const my = epoch;
     try {
-      const list = await api("/api/books");
+      const [list, sh] = await Promise.all([api("/api/books"), api("/api/shelves")]);
       if (my !== epoch) return;
       books = list;
+      shelves = sh;
       render();
     } catch (e) { if (me) toast(L("Không tải được kệ: ", "Couldn't load your shelf: ") + tr(e.message), true); }
   }
@@ -586,18 +649,134 @@
 
   let coverFor = null;
   let coverCands = [];
-  function openCover(id) {
+
+  // ── Sửa sách: thông tin, Lên máy, tầng, ghi vào file ──
+  function renderShelfChecks(checked) {
+    $("#bfShelves").innerHTML = shelves.length
+      ? shelves.map((s) => `<label><input type="checkbox" value="${esc(s.id)}"${checked.includes(s.id) ? " checked" : ""}>${esc(s.name)}</label>`).join("")
+      : `<span class="muted small">${esc(L("Chưa có tầng nào. Gõ tên ở dưới để tạo.", "No shelves yet. Type a name below to create one."))}</span>`;
+  }
+  const checkedShelves = () => [...document.querySelectorAll("#bfShelves input:checked")].map((x) => x.value);
+
+  function openBook(id) {
     const b = books.find((x) => x.id === id);
     if (!b) return;
     coverFor = id;
-    $("#coverBook").textContent = b.title + (b.author ? " — " + b.author : "");
+    $("#bfTitle").value = b.title;
+    $("#bfAuthor").value = b.author || "";
+    $("#bfIsbn").value = b.isbn || "";
+    $("#bfDevice").checked = !!b.onDevice;
+    // Máy đã tải bản này thì mặc định KHÔNG ghi file: file đổi thì máy phải tải lại, tiến độ đồng bộ tính theo file mới
+    $("#bfWrite").checked = !b.fetched;
+    $("#bfWriteNote").textContent = b.fetched
+      ? L("Ghi tên, tác giả vào file EPUB. Máy đã tải cuốn này: ghi thì phải tải lại, tiến độ đồng bộ của file mới bắt đầu lại.", "Write title and author into the EPUB. Your reader already has this book: it will need to download it again, and synced progress restarts for the new file.")
+      : L("Ghi tên, tác giả vào file EPUB (máy đọc hiện đúng tên mới).", "Write title and author into the EPUB file (the reader shows the new name).");
+    $("#bfNewShelf").value = "";
+    $("#bfStatus").textContent = "";
+    renderShelfChecks(shelfOf(b));
     $("#coverTitleIn").value = b.title;
     $("#coverAuthorIn").value = b.author || "";
     $("#coverResults").innerHTML = "";
     $("#coverStatus").textContent = "";
-    openSheet("coverSheet");
+    openSheet("bookSheet");
     searchCovers();
   }
+
+  /** Tải file từ kệ → ghi tên / tác giả vào OPF (trên trình duyệt) → gửi lại thay file cũ. */
+  async function writeMetaToFile(b, title, author) {
+    const r = await fetch(location.origin + "/books/" + encodeURIComponent(b.id) + ".epub", { credentials: "same-origin" });
+    if (!r.ok) throw new Error(L(`Không tải được sách (lỗi ${r.status})`, `Couldn't download the book (error ${r.status})`));
+    const out = await (await converter()).rewriteMeta(new Uint8Array(await r.arrayBuffer()), { title, author });
+    if (me && out.length > me.limits.maxUploadBytes) throw new Error(L("File quá ", "File is larger than ") + fmtSize(me.limits.maxUploadBytes));
+    const j = await api("/api/books/" + encodeURIComponent(b.id) + "/file", { method: "PUT", headers: { "Content-Type": "application/epub+zip" }, body: new Blob([out]) });
+    b.size = j.size; b.fetched = 0; b.progress = null;
+  }
+
+  $("#bookForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const b = books.find((x) => x.id === coverFor);
+    if (!b) return;
+    busy($("#bfSave"), L("Đang lưu…", "Saving…"), async () => {
+      const title = $("#bfTitle").value.trim(), author = $("#bfAuthor").value.trim();
+      const patch = { title, author, isbn: $("#bfIsbn").value.trim(), onDevice: $("#bfDevice").checked, shelves: checkedShelves() };
+      const renamed = title !== b.title || author !== (b.author || "");
+      try {
+        await api("/api/books/" + encodeURIComponent(b.id), { method: "PATCH", json: patch });
+        Object.assign(b, { title, author, isbn: patch.isbn.replace(/[\s-]/g, "").toUpperCase(), onDevice: patch.onDevice, shelves: patch.shelves });
+        if ($("#bfWrite").checked && renamed) {
+          $("#bfStatus").textContent = L("Đang ghi vào file…", "Writing into the file…");
+          await writeMetaToFile(b, title, author);
+        }
+        render(); refreshUsage(); closeSheets();
+        toast(L("Đã lưu", "Saved"));
+      } catch (err) { $("#bfStatus").textContent = L("Lỗi: ", "Error: ") + tr(err.message); render(); }
+    });
+  });
+
+  async function createShelf(name) {
+    const s = await api("/api/shelves", { json: { name } });
+    shelves = [...shelves, s].sort((a, b) => a.name.localeCompare(b.name, LOCALE));
+    return s;
+  }
+  $("#bfAddShelf").addEventListener("click", (e) => busy(e.currentTarget, "…", async () => {
+    const name = $("#bfNewShelf").value.trim();
+    if (!name) return $("#bfNewShelf").focus();
+    try {
+      const keep = checkedShelves();
+      const s = await createShelf(name);
+      renderShelfChecks([...keep, s.id]);
+      $("#bfNewShelf").value = "";
+      render();
+    } catch (err) { $("#bfStatus").textContent = tr(err.message); }
+  }));
+  $("#bfNewShelf").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#bfAddShelf").click(); } });
+
+  // Thanh tầng: chọn cách xem, tạo / đổi tên / xóa tầng
+  $("#shelfBar").addEventListener("click", (e) => {
+    const v = e.target.closest("[data-view]")?.dataset.view;
+    if (v) return setView(v);
+    if (e.target.closest("[data-newshelf]")) { shelfTool = "new"; renderBar(); }
+  });
+  async function saveShelfTool() {
+    const name = $("#shelfName").value.trim();
+    if (!name) return;
+    try {
+      if (shelfTool === "new") {
+        const s = await createShelf(name);
+        shelfTool = null;
+        setView("s:" + s.id);
+        toast(L(`Đã tạo tầng “${s.name}”. Bấm Sửa ở từng cuốn để xếp vào.`, `Created “${s.name}”. Tap Edit on a book to add it.`));
+      } else {
+        const id = view.slice(2);
+        await api("/api/shelves/" + encodeURIComponent(id), { method: "PATCH", json: { name } });
+        shelves = shelves.map((s) => (s.id === id ? { ...s, name } : s));
+        shelfTool = null; render();
+      }
+    } catch (err) { toast(tr(err.message), true); }
+  }
+  $("#shelfTools").addEventListener("keydown", (e) => {
+    if (e.target.id !== "shelfName") return;
+    if (e.key === "Enter") { e.preventDefault(); saveShelfTool(); }
+    if (e.key === "Escape") { e.stopPropagation(); shelfTool = null; renderBar(); }
+  });
+  $("#shelfTools").addEventListener("click", async (e) => {
+    if (e.target.closest("[data-shelfsave]")) return saveShelfTool();
+    if (e.target.closest("[data-shelfcancel]")) { shelfTool = null; return renderBar(); }
+    if (e.target.closest("[data-shelfrename]")) { shelfTool = "rename"; return renderBar(); }
+    const del = e.target.closest("[data-shelfdel]");
+    if (!del || del.dataset.busy) return;
+    if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = L("Chắc chứ?", "Sure?"); setTimeout(() => { if (del.isConnected) { del.dataset.armed = ""; del.textContent = L("Xóa tầng", "Delete shelf"); } }, 2500); return; }
+    const id = view.slice(2);
+    await busy(del, L("Đang xóa…", "Deleting…"), async () => {
+      try {
+        await api("/api/shelves/" + encodeURIComponent(id), { method: "DELETE" });
+        shelves = shelves.filter((s) => s.id !== id);
+        books.forEach((b) => { b.shelves = shelfOf(b).filter((x) => x !== id); });
+        setView("all");
+        toast(L("Đã xóa tầng (sách vẫn còn)", "Shelf deleted (books kept)"));
+      } catch (err) { toast(tr(err.message), true); }
+    });
+  });
 
   async function searchCovers() {
     const id = coverFor;
@@ -787,10 +966,26 @@
   });
   $("#pasteBtn").addEventListener("click", sendText);
 
+  /** Bật / tắt "Lên máy" ngay trên bìa. */
+  async function toggleDevice(btn) {
+    const b = books.find((x) => x.id === btn.dataset.dev);
+    if (!b || btn.dataset.busy) return;
+    btn.dataset.busy = "1";
+    const next = !b.onDevice;
+    try {
+      await api("/api/books/" + encodeURIComponent(b.id), { method: "PATCH", json: { onDevice: next } });
+      b.onDevice = next;
+      render();
+      toast(next ? L("Đã cho lên máy: lần sau mở kệ OPDS trên máy là thấy", "On device: it shows up next time your reader opens the OPDS shelf") : L("Đã bỏ khỏi máy (sách vẫn trên kệ web)", "Removed from device (still on your web shelf)"));
+    } catch (err) { delete btn.dataset.busy; toast(tr(err.message), true); }
+  }
+
   $("#search").addEventListener("input", render);
   $("#books").addEventListener("click", async (e) => {
-    const cov = e.target.closest("[data-cover]");
-    if (cov) return openCover(cov.dataset.cover);
+    const edit = e.target.closest("[data-edit]");
+    if (edit) return openBook(edit.dataset.edit);
+    const dev = e.target.closest("[data-dev]");
+    if (dev) return toggleDevice(dev);
     const btn = e.target.closest("[data-del]");
     if (!btn || btn.dataset.busy) return;
     if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = L("Chắc chứ?", "Sure?"); setTimeout(() => { btn.dataset.armed = ""; if (!btn.dataset.busy) btn.textContent = L("Xóa", "Delete"); }, 2500); return; }

@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import { makeThumb, readEpub } from "./cover";
 import { EpubInput, buildEpub, escapeXml } from "./epub";
+import { MetaEdit, rewriteEpubMeta } from "./epubedit";
 import { readEpubMeta } from "./epubmeta";
 import { cleanTree, serialize } from "./html";
 import type { Progress } from "./images";
@@ -152,6 +153,11 @@ export async function readBook(bytes: Uint8Array) {
   return readEpub(bytes);
 }
 
+/** Ghi tên, tác giả mới vào file EPUB đã có trên kệ. */
+export async function rewriteMeta(bytes: Uint8Array, m: MetaEdit): Promise<Uint8Array> {
+  return rewriteEpubMeta(bytes, m);
+}
+
 /** Link bài viết → EPUB (Readability chỉ tải khi dùng). */
 export async function clipUrl(url: string, onProgress?: (msg: string) => void) {
   const m = await import("./clip");
@@ -173,8 +179,9 @@ declare global {
       htmlToMarkdown: typeof htmlToMarkdown;
       makeThumb: typeof makeThumb;
       readBook: typeof readBook;
+      rewriteMeta: typeof rewriteMeta;
       accept: string[];
     };
   }
 }
-window.XteinkConvert = { convertFile, probePdf, clipUrl, htmlToMarkdown, makeThumb, readBook, accept: ACCEPT_EXTS };
+window.XteinkConvert = { convertFile, probePdf, clipUrl, htmlToMarkdown, makeThumb, readBook, rewriteMeta, accept: ACCEPT_EXTS };

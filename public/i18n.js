@@ -128,6 +128,20 @@
     [/^Ảnh bìa quá lớn$/, "Cover image is too large"],
     [/^Ảnh bìa phải là JPEG$/, "Cover image must be a JPEG"],
     [/^Đổi bìa quá nhiều, thử lại sau$/, "Too many cover changes, try again later"],
+    // Sắp xếp kệ
+    [/^Tên sách không được để trống$/, "Title can't be empty"],
+    [/^ISBN không hợp lệ$/, "Invalid ISBN"],
+    [/^Sửa quá nhiều, thử lại sau$/, "Too many edits, try again later"],
+    [/^Tên tầng dài 1–(\d+) ký tự$/, "Shelf names are 1–$1 characters"],
+    [/^Đã có tầng tên này$/, "A shelf with that name already exists"],
+    [/^Tối đa (\d+) tầng$/, "At most $1 shelves"],
+    [/^Không có tầng này$/, "Shelf not found"],
+    [/^Hôm nay đã hết lượt gửi, mai sửa tiếp nhé$/, "Out of uploads for today, edit again tomorrow"],
+    [/^Kệ đã đầy, xóa bớt rồi sửa tiếp$/, "Your shelf is full. Delete something, then try again"],
+    [/^Kho chung đã đầy$/, "Shared storage is full"],
+    [/^Chỉ nhận EPUB$/, "EPUB files only"],
+    [/^File quá lớn$/, "File is too large"],
+    [/^File không phải EPUB \(.*\)$/, "Not an EPUB file"],
   ];
 
   function tr(msg) {

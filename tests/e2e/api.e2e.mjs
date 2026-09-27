@@ -248,13 +248,79 @@ test("bìa sách: chỉ nhận JPEG nhỏ, lưu vào D1, tăng phiên bản; ng�
   assert.equal((await client().req("/api/covers/search?title=abc")).status, 401);
 });
 
+test("sắp xếp kệ: sửa thông tin, tầng, Lên máy lọc OPDS, máy tải thì đánh dấu, thay file", async () => {
+  const patch = (c, id, json) => c.req(`/api/books/${id}`, { method: "PATCH", json });
+  const mine = async () => (await A.req("/api/books")).data.find((b) => b.id === bookA);
+  const opdsHas = async () => (await (await fetch(`${BASE}/opds`, { headers: basic(U, opdsKeyA) })).text()).includes(bookA);
+
+  // Mặc định Lên máy, có trong OPDS
+  let b = await mine();
+  assert.equal(b.onDevice, true);
+  assert.deepEqual(b.shelves, []);
+  assert.equal(await opdsHas(), true);
+
+  // Sửa thông tin; dữ liệu sai; người khác không sửa được
+  assert.equal((await patch(A, bookA, { title: "Phía Sau Nghi Can X", author: "Higashino Keigo", isbn: "978-604-1-08525-1" })).status, 200);
+  assert.equal((await patch(A, bookA, { title: " " })).status, 400);
+  assert.equal((await patch(A, bookA, { isbn: "123" })).status, 400);
+  assert.equal((await patch(B, bookA, { title: "Cướp" })).status, 404);
+  b = await mine();
+  assert.deepEqual([b.title, b.author, b.isbn], ["Phía Sau Nghi Can X", "Higashino Keigo", "9786041085251"]);
+
+  // Tắt Lên máy → biến khỏi OPDS; bật lại → có lại
+  assert.equal((await patch(A, bookA, { onDevice: false })).status, 200);
+  assert.equal(await opdsHas(), false);
+  assert.equal((await patch(A, bookA, { onDevice: true })).status, 200);
+  assert.equal(await opdsHas(), true);
+
+  // Tầng: tạo, trùng tên, gán, đổi tên, người khác không đụng được, xóa tầng giữ sách
+  const s1 = await A.req("/api/shelves", { method: "POST", json: { name: "Trinh thám" } });
+  assert.equal(s1.status, 201, JSON.stringify(s1.data));
+  assert.equal((await A.req("/api/shelves", { method: "POST", json: { name: "Trinh thám" } })).status, 409);
+  assert.equal((await A.req("/api/shelves", { method: "POST", json: { name: "" } })).status, 400);
+  const sB = await B.req("/api/shelves", { method: "POST", json: { name: "Của Bình" } });
+  assert.equal((await patch(A, bookA, { shelves: [s1.data.id, sB.data.id] })).status, 200);
+  assert.deepEqual((await mine()).shelves, [s1.data.id], "tầng người khác bị bỏ qua");
+  assert.equal((await A.req(`/api/shelves/${s1.data.id}`, { method: "PATCH", json: { name: "Trinh thám Nhật" } })).status, 200);
+  assert.equal((await B.req(`/api/shelves/${s1.data.id}`, { method: "PATCH", json: { name: "x" } })).status, 404);
+  assert.equal((await B.req(`/api/shelves/${s1.data.id}`, { method: "DELETE" })).status, 404);
+  const list = (await A.req("/api/shelves")).data;
+  assert.deepEqual(list.map((s) => [s.name, s.count]), [["Trinh thám Nhật", 1]]);
+  assert.equal((await A.req(`/api/shelves/${s1.data.id}`, { method: "DELETE" })).status, 200);
+  assert.deepEqual((await mine()).shelves, []);
+  assert.ok(await mine(), "xóa tầng không xóa sách");
+
+  // Thay file: nhận ZIP, đổi kích thước, máy phải tải lại; người khác / file rác bị chặn
+  const bigger = fakeEpub(3000);
+  bigger[2999] = 9;
+  const put = (c, body) => c.req(`/api/books/${bookA}/file`, { method: "PUT", body, headers: { "Content-Type": "application/epub+zip" } });
+  assert.equal((await put(A, new Uint8Array(100))).status, 415);
+  assert.equal((await put(B, bigger)).status, 404);
+  const r = await put(A, bigger);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  b = await mine();
+  assert.equal(b.size, 3000);
+  assert.equal(b.fetched, 0);
+  const got = new Uint8Array(await (await fetch(`${BASE}/books/${bookA}.epub`, { headers: { Cookie: A.cookie } })).arrayBuffer());
+  assert.equal(got.length, 3000);
+  assert.equal(got[2999], 9);
+  // Trình duyệt tải thì không tính; máy (Basic) tải thì đánh dấu đã về máy
+  await fetch(`${BASE}/books/${bookA}.epub`, { headers: { Cookie: A.cookie } }).then((r) => r.arrayBuffer());
+  assert.equal((await mine()).fetched, 0);
+  await fetch(`${BASE}/books/${bookA}.epub`, { headers: basic(U, opdsKeyA) }).then((r) => r.arrayBuffer());
+  let fetched = 0;
+  for (let i = 0; i < 20 && !fetched; i++) { fetched = (await mine()).fetched; if (!fetched) await new Promise((r) => setTimeout(r, 100)); }
+  assert.ok(fetched > 0, "máy tải xong phải có fetched");
+
+});
+
 test("xóa sách", async () => {
   assert.equal((await A.req(`/api/books/${bookA}`, { method: "DELETE" })).status, 200);
   assert.equal((await A.req("/api/books")).data.length, 0);
   assert.equal((await A.req(`/api/books/${bookA}/cover`)).status, 404, "xóa sách thì mất bìa");
   assert.equal((await fetch(`${BASE}/books/${bookA}.epub`, { headers: basic(U, opdsKeyA) })).status, 404);
   const me = await A.req("/api/me");
-  assert.equal(me.data.usage.uploadsToday, 1, "xóa không trả lại lượt gửi");
+  assert.equal(me.data.usage.uploadsToday, 2, "gửi 1 + thay file 1; xóa không trả lại lượt gửi");
 });
 
 test("khóa đăng nhập: 10 lần sai từ một nơi thì nơi đó bị chặn, chủ tài khoản ở nơi khác vẫn vào được", async () => {

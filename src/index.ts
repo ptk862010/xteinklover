@@ -4,6 +4,7 @@ import * as books from "./books";
 import * as clip from "./clip";
 import * as kosync from "./kosync";
 import * as covers from "./covers";
+import * as shelves from "./shelves";
 import * as oauth from "./oauth";
 import * as tokens from "./tokens";
 import { ensureSchema } from "./db";
@@ -75,7 +76,8 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     if (!user) return isBrowserNavigation(req) ? deviceOnlyPage() : unauthorized();
     if (path === "/opds" || path === "/opds/catalog") return books.opdsFeed(env, url, user);
     const dl = path.match(new RegExp(`^/books/${BOOK_ID}\\.epub$`));
-    if (dl) return books.download(env, user, dl[1]);
+    // Máy đọc (không có phiên web) tải về → đánh dấu "đã về máy"
+    if (dl) return books.download(env, user, dl[1], session ? undefined : ctx);
     return error(404, "Không có");
   }
 
@@ -139,6 +141,17 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   }
   const one = path.match(new RegExp(`^/api/books/${BOOK_ID}$`));
   if (one && method === "DELETE") return books.remove(env, auth.user, one[1], ctx);
+  if (one && method === "PATCH") return shelves.patchBook(req, env, auth.user, one[1]);
+  const file = path.match(new RegExp(`^/api/books/${BOOK_ID}/file$`));
+  if (file && method === "PUT") return shelves.replaceFile(req, env, auth.user, file[1], ctx);
+
+  if (path === "/api/shelves") {
+    if (method === "GET") return shelves.listShelves(env, auth.user);
+    if (method === "POST") return shelves.createShelf(req, env, auth.user);
+  }
+  const shelf = path.match(/^\/api\/shelves\/([a-z0-9]{1,32})$/);
+  if (shelf && method === "PATCH") return shelves.renameShelf(req, env, auth.user, shelf[1]);
+  if (shelf && method === "DELETE") return shelves.deleteShelf(env, auth.user, shelf[1]);
 
   if (path === "/api/covers/search" && method === "GET") return covers.search(env, url, auth.user);
   const cov = path.match(new RegExp(`^/api/books/${BOOK_ID}/cover$`));
@@ -174,6 +187,8 @@ export default {
       (async () => {
         await ensureSchema(env.DB);
         await accounts.cronHousekeeping(env);
+        // Sách gửi trước khi có mã KOReader: tính dần vài cuốn mỗi giờ
+        await shelves.backfillKoHash(env, 2).catch((e) => console.error("backfillKoHash", e));
       })(),
     );
   },

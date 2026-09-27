@@ -2,6 +2,7 @@ import { uploadKeyAll, uploadKeyUser } from "./accounts";
 import * as db from "./db";
 import { Env, limits } from "./env";
 import { error, json } from "./http";
+import { koreaderHash } from "./kohash";
 import { OPDS_CONTENT_TYPE, acquisitionFeed, newBookId } from "./opds";
 import { cleanText } from "./validate";
 
@@ -11,10 +12,10 @@ const MAX_PAGE = 20;
 const DAY = 86400;
 const NOT_EPUB = "Chỉ nhận EPUB (trang web tự chuyển file khác sang EPUB trước khi gửi)";
 
-/** Máy đọc sách: feed OPDS riêng của từng người, có phân trang rel=next/previous. */
+/** Máy đọc sách: feed OPDS riêng của từng người (chỉ sách bật "Lên máy"), có phân trang rel=next/previous. */
 export async function opdsFeed(env: Env, url: URL, user: db.UserRow): Promise<Response> {
   const page = Math.min(Math.max(parseInt(url.searchParams.get("page") || "1", 10) || 1, 1), MAX_PAGE);
-  const rows = await db.listBooks(env.DB, user.id, OPDS_PAGE_SIZE + 1, (page - 1) * OPDS_PAGE_SIZE);
+  const rows = await db.listDeviceBooks(env.DB, user.id, OPDS_PAGE_SIZE + 1, (page - 1) * OPDS_PAGE_SIZE);
   const books = rows.slice(0, OPDS_PAGE_SIZE).map(db.toMeta);
   const base = url.origin;
   const pageUrl = (p: number) => (p <= 1 ? `${base}/opds` : `${base}/opds?page=${p}`);
@@ -97,6 +98,8 @@ export async function upload(req: Request, env: Env, url: URL, user: db.UserRow,
     size: bytes.length,
     added: now.toISOString(),
     blob_key: `b:${id}`,
+    // Mã KOReader của file (MD5 vài mẫu 1 KB — rẻ): nối tiến độ đọc KOSync với sách trên kệ
+    ko_hash: await koreaderHash(bytes),
   };
   const inserted = await db.insertBookWithinQuota(env.DB, row, lim.maxBooksPerUser, lim.maxStoragePerUser, lim.maxStorageTotal);
   if (inserted !== "ok") {
@@ -138,11 +141,13 @@ export function contentDisposition(title: string, id: string): string {
   return `attachment; filename="${safe}.epub"; filename*=UTF-8''${utf8}.epub`;
 }
 
-export async function download(env: Env, user: db.UserRow, id: string): Promise<Response> {
+/** `deviceCtx` có khi máy đọc (Basic auth) tải: ghi lại lúc tải để kệ web hiện "đã về máy". */
+export async function download(env: Env, user: db.UserRow, id: string, deviceCtx?: ExecutionContext): Promise<Response> {
   const row = await db.getBook(env.DB, user.id, id);
   if (!row) return new Response("Không có sách này", { status: 404 });
   const value = await env.BOOKS.get(row.blob_key, "stream");
   if (!value) return new Response("File sách bị thiếu, xóa rồi gửi lại nhé", { status: 410 });
+  deviceCtx?.waitUntil(db.markFetched(env.DB, user.id, id, Date.now()).catch(() => undefined));
   // Stream thẳng từ KV (isolate chỉ có 128 MB); FixedLengthStream để trả Content-Length thật,
   // máy đọc hiện được tiến độ tải
   const { readable, writable } = new FixedLengthStream(row.size);

@@ -98,6 +98,15 @@ Tìm trên Google Books cần khóa API (miễn phí, khoảng 1.000 lượt/ng�
 npx wrangler secret put GOOGLE_BOOKS_KEY
 ```
 
+### Sắp xếp kệ: tầng, Lên máy, tiến độ đọc
+
+- **Lên máy**: nút trên bìa từng cuốn. Máy đọc (OPDS) chỉ thấy các cuốn đang bật. Sách mới mặc định bật, nên ai không dùng thì máy vẫn thấy cả kệ như cũ.
+- **Tầng**: tự đặt (Văn học, Trinh thám, "Đọc lại"…), một cuốn nằm được nhiều tầng. Xóa tầng không xóa sách.
+- **Chưa phân loại**: tự gom những cuốn còn thiếu tầng, tác giả hoặc bìa. Dọn xong là tự rời khỏi đây. **Theo tác giả**: kệ gom theo tên tác giả, không phải tạo tay.
+- **Sửa**: tên, tác giả, ISBN, tầng, Lên máy. Tùy chọn ghi luôn tên, tác giả vào file EPUB (trình duyệt sửa `content.opf` rồi gửi lại, tốn một lượt gửi trong ngày). Máy đã tải bản cũ thì phải tải lại, và tiến độ đồng bộ của file mới bắt đầu lại (KOSync nhận sách theo nội dung file), nên với cuốn đã về máy, ô này mặc định tắt.
+- **Đã về máy**: máy đọc tải file bằng khóa OPDS thì thẻ sách hiện "✓ đã về máy".
+- **Tiến độ đọc**: máy dùng đồng bộ tiến độ (Document matching = Binary) thì thẻ sách hiện "đọc 43%". Máy chủ tính mã KOReader (partial MD5) của từng file lúc nhận; sách gửi trước đó được tính dần mỗi giờ.
+
 ### Gửi từ Obsidian
 
 Plugin Obsidian **Xteink Sync** gửi note thẳng lên kệ, từ bất cứ đâu: trên web vào **Tài khoản → Mã cho ứng dụng → Tạo mã**, dán mã vào cài đặt plugin (Gửi tới: Kệ Xteink Lover). Mã chỉ xem, gửi, xóa được sách; tối đa 5 mã, thu hồi riêng từng mã.
