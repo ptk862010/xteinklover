@@ -94,11 +94,15 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 .case::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(115deg, rgba(255,255,255,.07) 0 18%, transparent 18% 58%, rgba(255,255,255,.05) 58% 61%, transparent 61%); }
 .tier { position: relative; margin-bottom: 18px; }
-.tier-row { display: flex; align-items: flex-end; gap: 20px; min-height: 238px; padding: 30px 22px 0; overflow-x: auto; scrollbar-width: thin;
-  background: radial-gradient(ellipse 70% 90% at 50% 0%, var(--spot), transparent 70%); }
-/* Sách đứng giữa tầng như tủ trưng bày; nhiều quá thì cuộn ngang mà không bị cắt mất cuốn đầu */
-.tier-row > :first-child { margin-left: auto; }
-.tier-row > :last-child { margin-right: auto; }
+/* Mỗi tầng tự xuống hàng (không cuộn ngang); giữa các hàng là một thanh ván mỏng như tấm ngăn.
+   Vạch ván vẽ bằng nền lặp theo chiều cao một hàng: --bh (cao bìa) + --rg (khoảng cách hàng).
+   --pt < --rg để vạch lặp ngược lên trên lọt ra ngoài, chỉ còn vệt bóng mờ như bóng tầng trên đổ xuống. */
+.tier-row { --bw: 112px; --bh: calc(var(--bw) * 1.5); --rg: 26px; --pt: 20px;
+  display: grid; grid-template-columns: repeat(auto-fill, var(--bw)); grid-auto-rows: var(--bh); justify-content: center; align-items: end;
+  column-gap: 20px; row-gap: var(--rg); min-height: calc(var(--bh) + var(--pt)); margin: 0 -14px; padding: var(--pt) 36px 0;
+  background:
+    linear-gradient(to bottom, transparent 0 var(--bh), var(--plank-top) var(--bh) calc(var(--bh) + 4px), rgba(0,0,0,.4) calc(var(--bh) + 4px) calc(var(--bh) + 9px), transparent calc(var(--bh) + 9px)) 0 var(--pt) / 100% calc(var(--bh) + var(--rg)) repeat-y,
+    radial-gradient(ellipse 70% 90% at 50% 0%, var(--spot), transparent 70%) no-repeat; }
 .plank { position: relative; height: 26px; margin: 0 -14px;
   background: linear-gradient(180deg, var(--plank-top) 0 9px, var(--plank-front) 9px);
   box-shadow: 0 1px 0 rgba(255,255,255,.12) inset, 0 12px 16px -8px rgba(0,0,0,.55); display: flex; justify-content: center; align-items: flex-end; }
@@ -107,13 +111,15 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
   font: 600 .72rem/1.35 Inter, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase;
   box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 1px 2px rgba(0,0,0,.45); text-shadow: 0 1px 0 rgba(255,255,255,.35); }
 .plate:hover, .plate:focus-visible { filter: brightness(1.1); outline: none; }
-.spine { flex: none; width: 132px; padding: 10px; border: 0; border-radius: 2px 5px 5px 2px; font-size: .86rem; text-align: left; cursor: pointer; overflow: hidden;
+.spine { width: var(--bw); padding: 9px; border: 0; border-radius: 2px 5px 5px 2px; font-size: .86rem; text-align: left; cursor: pointer; overflow: hidden;
   box-shadow: inset 4px 0 0 rgba(0,0,0,.18), inset 5px 0 0 rgba(255,255,255,.12), 8px 10px 16px -4px rgba(0,0,0,.5);
   transition: transform .2s ease, box-shadow .2s ease; transform-origin: bottom center; }
 .spine:hover, .spine:focus-visible { transform: translateY(-8px) rotate(-1.5deg); box-shadow: inset 4px 0 0 rgba(0,0,0,.18), 12px 18px 22px -6px rgba(0,0,0,.55); }
 .spine:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Ở tầng Lên máy thì dấu ⚡ trên từng cuốn là thừa */
+.tier[data-drop="device"] .bolt { display: none; }
 .spine .bolt { position: absolute; z-index: 1; top: 6px; right: 6px; font-style: normal; font-size: .72rem; line-height: 1; padding: 3px 4px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
-.tier-empty { margin: auto; padding-bottom: 20px; color: var(--ink2); font-size: .86rem; font-style: italic; }
+.tier-empty { grid-column: 1 / -1; justify-self: center; align-self: center; margin: 0; padding-bottom: 12px; color: var(--ink2); font-size: .86rem; font-style: italic; }
 .case-hint { color: var(--ink2); font-size: .86rem; margin: 12px 2px 0; }
 .seg { display: inline-flex; flex: none; gap: 2px; padding: 3px; margin-right: 6px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .chip.big { border-color: transparent; background: transparent; font-weight: 600; font-size: .9rem; padding: 6px 14px; }
@@ -121,8 +127,8 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 @media (max-width: 600px) {
   .case { border-width: 8px; border-bottom-width: 12px; padding: 10px 10px 0; }
   .plank { margin: 0 -10px; }
-  .tier-row { gap: 14px; min-height: 186px; padding: 24px 14px 0; }
-  .spine { width: 100px; font-size: .78rem; padding: 8px; }
+  .tier-row { --bw: 84px; --rg: 20px; --pt: 16px; column-gap: 12px; margin: 0 -10px; padding: var(--pt) 14px 0; }
+  .spine { font-size: .7rem; padding: 6px; }
 }
 /* Kéo thả sách vào tầng */
 [data-drag] { -webkit-user-drag: element; }
@@ -142,7 +148,7 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 .spine .done { position: absolute; z-index: 1; top: 6px; left: 8px; font-style: normal; font-size: .7rem; font-weight: 700; line-height: 1; padding: 3px 5px; border-radius: 999px; background: var(--ok); color: #fff; }
 .sheet-acts .btn { flex: 1; text-align: center; }
 /* Tầng + trạng thái trên thẻ sách */
-.shelf-bar { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; margin-bottom: 4px; scrollbar-width: thin; }
+.shelf-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 0 10px; margin-bottom: 4px; }
 .chip { flex: none; border: 1px solid var(--line); background: var(--bg2); color: var(--ink2); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .84rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .chip span { opacity: .7; font-variant-numeric: tabular-nums; }
 .chip:hover { border-color: var(--accent); color: var(--ink); }
