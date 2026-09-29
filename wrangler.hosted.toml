@@ -44,7 +44,7 @@ OPEN_SIGNUP = "1"
 SHOW_SELF_HOST = "1"
 # Đăng nhập bằng Google (Client secret là secret: wrangler secret put GOOGLE_CLIENT_SECRET)
 GOOGLE_CLIENT_ID = "684909543360-j8llej26mnd4aficuscu5bnq82i8gcs7.apps.googleusercontent.com"
-MAX_USERS = "20"
+MAX_USERS = "300"
 MAX_SIGNUPS_PER_DAY = "10"
 MAX_BOOKS_PER_USER = "30"
 MAX_STORAGE_MB_PER_USER = "50"
