@@ -209,6 +209,7 @@ textarea.input { resize: vertical; font-family: ui-monospace, Consolas, monospac
 .form-error { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--err) 12%, transparent); color: var(--err); font-size: .9rem; }
 .btn.wide { width: 100%; padding: 11px 14px; }
 .usage { margin: -6px 0 14px; }
+.usage-full { margin: -8px 0 14px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #f38020 12%, transparent); }
 .sheet h4 { margin: 22px 0 8px; font-size: .95rem; }
 .sheet .auth-form { gap: 8px; }
 .danger-title { color: var(--err); }

@@ -1,6 +1,7 @@
 (() => {
   const { L, tr, lang } = window.XL_I18N;
   const LOCALE = lang === "en" ? "en-GB" : "vi-VN";
+  const DEPLOY_URL = "https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover";
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   let books = [];
@@ -163,6 +164,15 @@
       `${u.books}/${l.maxBooks} cuốn · ${fmtSize(u.bytes)}/${fmtSize(l.maxStorageBytes)} · hôm nay đã gửi ${u.uploadsToday}/${l.maxUploadsPerDay}`,
       `${u.books}/${l.maxBooks} books · ${fmtSize(u.bytes)}/${fmtSize(l.maxStorageBytes)} · sent today ${u.uploadsToday}/${l.maxUploadsPerDay}`,
     );
+    // Bản chung sắp đầy kệ (≥ 80%): mời tự dựng bản riêng ngay lúc cần (HTML cố định, không có dữ liệu người dùng)
+    const nearFull = (l.maxBooks > 0 && u.books >= l.maxBooks * 0.8) || (l.maxStorageBytes > 0 && u.bytes >= l.maxStorageBytes * 0.8);
+    $("#usageFull").hidden = !(cfg.selfHost && nearFull);
+    if (!$("#usageFull").hidden) {
+      $("#usageFull").innerHTML = L(
+        `Kệ sắp đầy? Tự dựng bản riêng, 1 GB miễn phí trên Cloudflare của bạn, 3 bước: <a href="${DEPLOY_URL}" target="_blank" rel="noopener">Deploy to Cloudflare</a> · <a href="https://ongk.dev/xteink-lover-ke-sach-cho-xteink#binh-luan" target="_blank" rel="noopener">Kẹt thì hỏi ở đây</a>`,
+        `Running out of room? Run your own copy, 1 GB free on your Cloudflare account, 3 steps: <a href="${DEPLOY_URL}" target="_blank" rel="noopener">Deploy to Cloudflare</a> · <a href="https://ongk.dev/en/xteink-lover-bookshelf-for-xteink#binh-luan" target="_blank" rel="noopener">Stuck? Ask here</a>`,
+      );
+    }
     const created = new Date(me.user.created).toLocaleDateString(LOCALE);
     $("#accountInfo").textContent = L(`Đăng nhập là ${me.user.username} · tạo ngày ${created}`, `Logged in as ${me.user.username} · created ${created}`);
     renderAccount();
@@ -390,8 +400,8 @@
       } else if (err.status === 403 && /Đã đủ số tài khoản/.test(err.message)) {
         // Bản chung đã đủ chỗ: chỉ sang chỗ tự dựng bản riêng (HTML cố định, không có dữ liệu người dùng)
         $("#authHint").innerHTML = L(
-          'Bản chung đã đủ người. Bạn có thể tự dựng bản riêng miễn phí: <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener">Deploy to Cloudflare</a>.',
-          'This shared copy is full. You can run your own for free: <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/ptk862010/xteinklover" target="_blank" rel="noopener">Deploy to Cloudflare</a>.',
+          `Bản chung đã đủ người. Bạn có thể tự dựng bản riêng miễn phí: <a href="${DEPLOY_URL}" target="_blank" rel="noopener">Deploy to Cloudflare</a>.`,
+          `This shared copy is full. You can run your own for free: <a href="${DEPLOY_URL}" target="_blank" rel="noopener">Deploy to Cloudflare</a>.`,
         );
       }
     } finally {
